@@ -651,104 +651,103 @@ export default function PropertiesPanel({
             </div>
           </div>
           {/* --- Response Mapping UI --- */}
-          <div className="mb-2">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Response Mapping
-            </label>
-            <div className="flex flex-col gap-2">
-              {(Object.entries(apiDraft?.responseMap || {})).map(([apiKey, fieldId], idx) => (
-                <div key={apiKey + idx} className="flex gap-2 items-center">
-                  <input
-                    className="border rounded px-2 py-1 flex-1"
-                    placeholder="API response key"
-                    value={apiKey}
-                    onChange={e => {
-                      const newMap = { ...apiDraft.responseMap };
-                      const oldValue = newMap[apiKey];
-                      delete newMap[apiKey];
-                      newMap[e.target.value] = oldValue;
-                      setApiDraft(d => ({ ...d, responseMap: newMap }));
-                    }}
-                  />
-                  <select
-                    className="border rounded px-2 py-1 flex-1"
-                    value={fieldId}
-                    onChange={e => {
-                      setApiDraft(d => ({
-                        ...d,
-                        responseMap: { ...d.responseMap, [apiKey]: e.target.value }
-                      }));
-                    }}
-                  >
-                    <option value="">Select field to autofill</option>
-                    {flattenFields(fields)
-                      .filter(f => f.type === "text")
-                      .map(f => (
-                        <option key={f.id} value={f.id}>
-                          {f.label || f.id}
-                        </option>
-                      ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="text-red-500"
-                    onClick={() => {
-                      const newMap = { ...apiDraft.responseMap };
-                      delete newMap[apiKey];
-                      setApiDraft(d => ({ ...d, responseMap: newMap }));
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              {/* Add new mapping row */}
-              <div className="flex gap-2 items-center">
-                <input
-                  className="border rounded px-2 py-1 flex-1"
-                  placeholder="API response key"
-                  value={apiDraft?._newApiKey || ""}
-                  onChange={e => setApiDraft(d => ({ ...d, _newApiKey: e.target.value }))}
-                />
-                <select
-                  className="border rounded px-2 py-1 flex-1"
-                  value={apiDraft?._newFieldId || ""}
-                  onChange={e => setApiDraft(d => ({ ...d, _newFieldId: e.target.value }))}
-                >
-                  <option value="">Select field to autofill</option>
-                  {flattenFields(fields)
-                    .filter(f => f.type === "text")
-                    .map(f => (
-                      <option key={f.id} value={f.id}>
-                        {f.label || f.id}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  type="button"
-                  className="bg-blue-500 text-white px-2 py-1 rounded"
-                  onClick={() => {
-                    if (apiDraft._newApiKey && apiDraft._newFieldId) {
-                      setApiDraft(d => ({
-                        ...d,
-                        responseMap: {
-                          ...(d.responseMap || {}),
-                          [d._newApiKey]: d._newFieldId
-                        },
-                        _newApiKey: "",
-                        _newFieldId: ""
-                      }));
-                    }
-                  }}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Map API response keys to text fields for autofill.
-            </div>
-          </div>
+         {/* --- Response Mapping UI --- */}
+<div className="mb-2">
+  <label className="block text-xs font-medium text-gray-600 mb-1">
+    Response Mapping <span className="text-gray-400">(Map API response to fields)</span>
+  </label>
+  <div className="space-y-2">
+    {/* Mapping List */}
+    {Object.keys(apiDraft?.responseMap || {}).length === 0 && (
+      <div className="text-xs text-gray-400 italic px-2 py-3 border border-dashed rounded bg-gray-50 mb-2">
+        No mappings yet. Add a response key and select a field below.
+      </div>
+    )}
+    {Object.entries(apiDraft?.responseMap || {}).map(([apiKey, fieldId], idx) => {
+      const fieldInfo = flattenFields(fields).find(f => f.id === fieldId);
+      return (
+        <div
+          key={apiKey + idx}
+          className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 transition group"
+        >
+          <span className="font-mono text-xs text-blue-700 min-w-[80px]">
+            {apiKey}
+          </span>
+          <span className="mx-1 text-gray-400">→</span>
+          <span className="flex-1 text-sm font-medium text-blue-900 truncate">
+            {fieldInfo?.label || "(field missing)"}{" "}
+            <span className="text-xs text-gray-400">[{fieldId.slice(0, 6)}]</span>
+          </span>
+          <button
+            type="button"
+            className="ml-2 text-red-400 hover:text-red-700 transition p-1"
+            title="Remove mapping"
+            onClick={() => {
+              const newMap = { ...apiDraft.responseMap };
+              delete newMap[apiKey];
+              setApiDraft(d => ({ ...d, responseMap: newMap }));
+            }}
+          >
+            ×
+          </button>
+        </div>
+      );
+    })}
+
+    {/* Add new mapping row */}
+    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mt-1">
+      <input
+        className="border rounded px-2 py-1 flex-1 min-w-0 text-sm"
+        placeholder="API response key (e.g. name)"
+        value={apiDraft?._newApiKey || ""}
+        onChange={e => setApiDraft(d => ({ ...d, _newApiKey: e.target.value }))}
+      />
+      <select
+        className="border rounded px-2 py-1 flex-1 min-w-0 text-sm"
+        value={apiDraft?._newFieldId || ""}
+        onChange={e => setApiDraft(d => ({ ...d, _newFieldId: e.target.value }))}
+      >
+        <option value="">Select field to autofill</option>
+        {flattenFields(fields)
+          .filter(f => f.type === "text")
+          .map(f => (
+            <option key={f.id} value={f.id}>
+              {f.label} [{f.id.slice(0, 6)}]
+            </option>
+          ))}
+      </select>
+      <button
+        type="button"
+        className={`bg-blue-600 text-white px-4 py-1 rounded font-semibold shadow hover:bg-blue-700 transition ${
+          !(apiDraft?._newApiKey && apiDraft?._newFieldId)
+            ? "opacity-60 cursor-not-allowed"
+            : ""
+        }`}
+        onClick={() => {
+          if (apiDraft._newApiKey && apiDraft._newFieldId) {
+            setApiDraft(d => ({
+              ...d,
+              responseMap: {
+                ...(d.responseMap || {}),
+                [d._newApiKey]: d._newFieldId
+              },
+              _newApiKey: "",
+              _newFieldId: ""
+            }));
+          }
+        }}
+        disabled={!(apiDraft?._newApiKey && apiDraft?._newFieldId)}
+        tabIndex={0}
+      >
+        +
+      </button>
+    </div>
+    <div className="text-xs text-gray-500 mt-1 ml-1">
+      <b>Tip:</b> Add as many mappings as you need. Remove by clicking ×. Fields are auto-filled after API returns!
+    </div>
+  </div>
+</div>
+
           <button
             className="bg-blue-600 text-white px-4 py-1 rounded font-semibold hover:bg-blue-700"
             onClick={handleApiSave}
