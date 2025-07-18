@@ -4,7 +4,6 @@ import { FaFont, FaCheck, FaList, FaDotCircle, FaCloud, FaLink, FaTrash, FaMagic
 
 // --- Helpers ---
 
-// Recursively flatten all fields
 function flattenFields(fieldsArr) {
   let all = [];
   fieldsArr.forEach(f => {
@@ -16,8 +15,6 @@ function flattenFields(fieldsArr) {
   });
   return all;
 }
-
-// Flatten all fields WITH parent info (for dependency/cycle detection)
 function flattenFieldsWithDeps(fieldsArr, parent = null) {
   let all = [];
   fieldsArr.forEach(f => {
@@ -29,28 +26,21 @@ function flattenFieldsWithDeps(fieldsArr, parent = null) {
   });
   return all;
 }
-
-// Advanced dependency cycle checker (direct and indirect)
 function doesFieldDependOn(flatFields, candidateId, currentId, visited = new Set()) {
   if (candidateId === currentId) return true;
   if (visited.has(candidateId)) return false;
   visited.add(candidateId);
-
   const candidate = flatFields.find(f => f.id === candidateId);
   if (!candidate) return false;
-
   const depIds = [];
   if (candidate.dependency?.fieldId) depIds.push(candidate.dependency.fieldId);
   if (Array.isArray(candidate.dependsOn)) depIds.push(...candidate.dependsOn);
-
   for (let depId of depIds) {
     if (depId === currentId) return true;
     if (doesFieldDependOn(flatFields, depId, currentId, visited)) return true;
   }
   return false;
 }
-
-// Find, update, and delete field by id (recursive)
 function findFieldById(fields, id) {
   for (const field of fields) {
     if (field.id === id) return field;
@@ -80,7 +70,7 @@ function deleteFieldById(fields, id) {
     );
 }
 
-// --- Card component for sectioning UI ---
+// --- Card UI helper ---
 function Card({ icon, title, children, tooltip, className }) {
   return (
     <section className={`bg-white rounded-2xl shadow p-4 mb-5 border border-gray-100 ${className || ''}`}>
@@ -104,7 +94,7 @@ export default function PropertiesPanel({
 }) {
   const field = findFieldById(fields, selectedFieldId);
 
-  // State for API config editing (local buffer, not saved until user clicks Save)
+  // --- Local state for API config, options, etc ---
   const [apiDraft, setApiDraft] = useState(field?.apiConfig || null);
   const [optionSource, setOptionSource] = useState(field?.apiConfig ? "api" : "static");
   const [apiError, setApiError] = useState(null);
@@ -116,7 +106,6 @@ export default function PropertiesPanel({
       : "{}"
   );
   const [optionInput, setOptionInput] = useState("");
-  const lastApiCallRef = useRef({});
 
   useEffect(() => {
     setApiDraft(field?.apiConfig || {
@@ -125,7 +114,8 @@ export default function PropertiesPanel({
       params: {},
       mapOptions: { idKey: "", labelKey: "" },
       responsePath: "",
-      dependsOn: []
+      dependsOn: [],
+      responseMap: {}
     });
     setApiPreview([]);
     setApiError(null);
@@ -155,7 +145,7 @@ export default function PropertiesPanel({
     setSelectedFieldId(null);
   };
 
-  // Option editing
+  // --- Options editing for dropdown/radio only ---
   const addOption = () => {
     if (optionInput.trim()) {
       updateField({
@@ -177,14 +167,6 @@ export default function PropertiesPanel({
     updateField({ options: field.options.filter((_, i) => i !== idx) });
   };
 
-  // Icons for each widget type
-  const icons = {
-    text: <FaFont />,
-    dropdown: <FaList />,
-    radio: <FaDotCircle />,
-    section: <FaCheck />,
-  };
-
   // --- Params JSON handling ---
   const handleParamTextChange = e => {
     const val = e.target.value;
@@ -200,13 +182,30 @@ export default function PropertiesPanel({
 
   // --- API Save & Preview ---
   const handleApiSave = async () => {
-    updateField({ apiConfig: apiDraft, options: [] });
+    // Clean UI-only properties and add safe defaults for arrays/objects
+    const cleanedApiDraft = {
+      ...apiDraft,
+      responseMap: apiDraft.responseMap || {},
+      mapOptions: apiDraft.mapOptions || { idKey: "", labelKey: "" },
+      params: apiDraft.params || {},
+      dependsOn: apiDraft.dependsOn || [],
+    };
+    delete cleanedApiDraft._newApiKey;
+    delete cleanedApiDraft._newFieldId;
+  
+    updateField({ apiConfig: cleanedApiDraft, options: [] });
     setApiLoading(true);
     setApiError(null);
     setApiPreview([]);
     try {
-      const { url, method = "GET", params = {}, mapOptions = {}, responsePath } = apiDraft;
-      // InterpolateParams for Preview (use {} for values in panel)
+      const {
+        url,
+        method = "GET",
+        params = {},
+        mapOptions = { idKey: "", labelKey: "" },
+        responsePath
+      } = cleanedApiDraft; // use cleanedApiDraft here!
+  
       let realParams = {};
       Object.entries(params).forEach(([key, val]) => {
         if (typeof val === "string") {
@@ -220,7 +219,7 @@ export default function PropertiesPanel({
           realParams[key] = val;
         }
       });
-
+  
       let response;
       if (method === "POST") {
         response = await fetch(url, {
@@ -239,37 +238,7 @@ export default function PropertiesPanel({
           items = items?.[seg];
         }
       }
-      let mapped;
-      if (mapOptions.idKey && mapOptions.labelKey) {
-        mapped = Array.isArray(items)
-          ? items.map(item => ({
-              id: item[mapOptions.idKey],
-              label: item[mapOptions.labelKey],
-              ...item
-            }))
-          : [];
-      } else if (mapOptions.labelKey) {
-        mapped = Array.isArray(items)
-          ? items.map(item => ({
-              id: item[mapOptions.labelKey],
-              label: item[mapOptions.labelKey],
-              ...item
-            }))
-          : [];
-      } else if (mapOptions.idKey) {
-        mapped = Array.isArray(items)
-          ? items.map(item => ({
-              id: item[mapOptions.idKey],
-              label: item[mapOptions.idKey],
-              ...item
-            }))
-          : [];
-      } else if (Array.isArray(items) && typeof items[0] === "string") {
-        mapped = items.map(str => ({ id: str, label: str }));
-      } else {
-        mapped = [];
-      }
-      setApiPreview(mapped);
+      setApiPreview(items);
       setApiLoading(false);
       setApiError(null);
     } catch (err) {
@@ -278,6 +247,7 @@ export default function PropertiesPanel({
       setApiLoading(false);
     }
   };
+  
 
   // --- Cycle-safe dependency logic for "Visibility Dependency" only ---
   const flatFields = flattenFieldsWithDeps(fields);
@@ -289,101 +259,67 @@ export default function PropertiesPanel({
   const depField = field?.dependency
     ? flatFields.find(f => f.id === field.dependency.fieldId)
     : null;
-  function getDependencyValues(depField) {
-    if (!depField) return [];
-    if (depField.type === "radio" || depField.type === "dropdown") {
-      if (depField.apiConfig) return [];
-      return depField.options || [];
-    }
-    return [];
-  }
-
-  // Option Source Switcher (unchanged)
-  const handleOptionSourceChange = (e) => {
-    const value = e.target.value;
-    setOptionSource(value);
-    if (value === "static") {
-      updateField({ apiConfig: null });
-    } else {
-      setApiDraft({
-        url: "",
-        method: "GET",
-        params: {},
-        mapOptions: { idKey: "", labelKey: "" },
-        responsePath: "",
-        dependsOn: []
-      });
-      updateField({
-        apiConfig: {
-          url: "",
-          method: "GET",
-          params: {},
-          mapOptions: { idKey: "", labelKey: "" },
-          responsePath: "",
-          dependsOn: []
-        },
-        options: []
-      });
-      setParamText("{}");
-    }
-  };
 
   // --------- RENDER ---------
+  // --- ICONS ---
+  const icons = {
+    text: <FaFont />,
+    dropdown: <FaList />,
+    radio: <FaDotCircle />,
+    section: <FaCheck />,
+  };
+
   return (
     <div className="w-full max-w-full">
       {/* GENERAL */}
       <Card icon={icons[field.type] || <FaCheck />} title="General">
-  {/* Label */}
-  <div className="mb-4">
-    <label className="block font-medium text-gray-600 mb-1">Label</label>
-    <input
-      className="w-full border rounded px-2 py-1"
-      value={field.label || ""}
-      onChange={e => updateField({ label: e.target.value })}
-    />
-  </div>
-
-  {/* Columns (only for sections) */}
-  {field.type === 'section' && (
-    <div className="mb-4">
-      <label className="block font-medium text-gray-600 mb-1">Columns</label>
-      <input
-        type="number"
-        min={1}
-        max={4}
-        className="w-20 border rounded px-2 py-1"
-        value={field.columns || 1}
-        onChange={e => updateField({ columns: Math.max(1, Math.min(4, Number(e.target.value))) })}
-      />
-      <div className="text-xs text-gray-400 mt-1">
-        Arrange widgets in {field.columns || 1} column(s).
-      </div>
-    </div>
-  )}
-
-  {/* Placeholder (only for text input fields) */}
-  {field.type === "text" && (
-    <div className="mb-4">
-      <label className="block font-medium text-gray-600 mb-1">Placeholder</label>
-      <input
-        className="w-full border rounded px-2 py-1"
-        value={field.placeholder || ""}
-        onChange={e => updateField({ placeholder: e.target.value })}
-      />
-    </div>
-  )}
-
-  {/* Description (for all fields/sections) */}
-  <div className="mb-2">
-    <label className="block font-medium text-gray-600 mb-1">Description</label>
-    <input
-      className="w-full border rounded px-2 py-1"
-      value={field.description || ""}
-      onChange={e => updateField({ description: e.target.value })}
-    />
-  </div>
-</Card>
-
+        {/* Label */}
+        <div className="mb-4">
+          <label className="block font-medium text-gray-600 mb-1">Label</label>
+          <input
+            className="w-full border rounded px-2 py-1"
+            value={field.label || ""}
+            onChange={e => updateField({ label: e.target.value })}
+          />
+        </div>
+        {/* Columns (for sections) */}
+        {field.type === 'section' && (
+          <div className="mb-4">
+            <label className="block font-medium text-gray-600 mb-1">Columns</label>
+            <input
+              type="number"
+              min={1}
+              max={4}
+              className="w-20 border rounded px-2 py-1"
+              value={field.columns || 1}
+              onChange={e => updateField({ columns: Math.max(1, Math.min(4, Number(e.target.value))) })}
+            />
+            <div className="text-xs text-gray-400 mt-1">
+              Arrange widgets in {field.columns || 1} column(s).
+            </div>
+          </div>
+        )}
+        {/* Placeholder (for text) */}
+        {field.type === "text" && (
+          <div className="mb-4">
+            <label className="block font-medium text-gray-600 mb-1">Placeholder</label>
+            <input
+              className="w-full border rounded px-2 py-1"
+              value={field.placeholder || ""}
+              onChange={e => updateField({ placeholder: e.target.value })}
+            />
+          </div>
+        )}
+        {/* Description */}
+        <div className="mb-2">
+          <label className="block font-medium text-gray-600 mb-1">Description</label>
+          <input
+            className="w-full border rounded px-2 py-1"
+            value={field.description || ""}
+            onChange={e => updateField({ description: e.target.value })}
+          />
+        </div>
+      </Card>
 
       {/* VALIDATION */}
       {(field.type === "text" || field.type === "dropdown") && (
@@ -474,14 +410,41 @@ export default function PropertiesPanel({
         </Card>
       )}
 
-      {/* OPTION SOURCE PICKER & OPTIONS */}
+      {/* OPTIONS SOURCE: Only for Dropdown/Radio */}
       {(field.type === "dropdown" || field.type === "radio") && (
         <Card icon={<FaMagic />} title="Options Source" tooltip="Choose static or dynamic options.">
           <div className="mb-3">
             <select
               className="border rounded px-2 py-1"
               value={optionSource}
-              onChange={handleOptionSourceChange}
+              onChange={e => {
+                const value = e.target.value;
+                setOptionSource(value);
+                if (value === "static") {
+                  updateField({ apiConfig: null });
+                } else {
+                  setApiDraft({
+                    url: "",
+                    method: "GET",
+                    params: {},
+                    mapOptions: { idKey: "", labelKey: "" },
+                    responsePath: "",
+                    dependsOn: []
+                  });
+                  updateField({
+                    apiConfig: {
+                      url: "",
+                      method: "GET",
+                      params: {},
+                      mapOptions: { idKey: "", labelKey: "" },
+                      responsePath: "",
+                      dependsOn: []
+                    },
+                    options: []
+                  });
+                  setParamText("{}");
+                }
+              }}
             >
               <option value="static">Manual (Static List)</option>
               <option value="api">Dynamic (API)</option>
@@ -554,10 +517,7 @@ export default function PropertiesPanel({
               </div>
               <div className="mb-2">
                 <label className="block text-xs font-medium text-gray-600">
-                  Params (JSON, advanced){" "}
-                  <span className="text-blue-400" title="You can use ${fieldId} or ${fieldId.key} for param interpolation.">
-                    ⓘ
-                  </span>
+                  Params (JSON)
                 </label>
                 <textarea
                   className="w-full border rounded px-2 py-1 text-xs"
@@ -569,7 +529,7 @@ export default function PropertiesPanel({
                   <div className="text-red-600 text-xs mt-1">{apiError}</div>
                 )}
                 <div className="text-xs text-gray-500 mt-1">
-                  <b>Tip:</b> You can reference any parent field value as <code>${'{fieldId}'}</code> or <code>${'{fieldId.key}'}</code> (e.g. <code>${'{state.code}'}</code>).
+                  Use <code>${'{fieldId}'}</code> to interpolate field values.
                 </div>
               </div>
               <div className="flex gap-2 mb-2">
@@ -602,7 +562,6 @@ export default function PropertiesPanel({
                 value={apiDraft?.responsePath || ""}
                 onChange={e => setApiDraft(d => ({ ...d, responsePath: e.target.value }))}
               />
-              {/* --- Depends On (fields) as plain text input --- */}
               <div className="mb-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Depends On (fields)
@@ -623,10 +582,7 @@ export default function PropertiesPanel({
                   placeholder="e.g. stateId, countryId"
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  Enter one or more field IDs, separated by commas. These will be used in Params as <code>${'{fieldId}'}</code> or <code>${'{fieldId.key}'}</code>.<br />
-                  <span className="text-blue-500">
-                    <b>Tip:</b> Advanced mode—use any field ID from your form!
-                  </span>
+                  Enter field IDs, separated by commas. Will be used in Params as <code>${'{fieldId}'}</code>.
                 </div>
               </div>
               <button
@@ -637,15 +593,177 @@ export default function PropertiesPanel({
               >
                 {apiLoading ? "Saving & Fetching..." : "Save & Fetch Options"}
               </button>
-              {apiPreview.length > 0 && (
+              {(
+                // Show only if array with >0, or object with >0 keys (but not if null/empty/false)
+                (Array.isArray(apiPreview) && apiPreview.length > 0) ||
+                (apiPreview && typeof apiPreview === 'object' && !Array.isArray(apiPreview) && Object.keys(apiPreview).length > 0)
+                ) && (
                 <div className="mt-3 text-xs">
-                  <div className="font-semibold text-gray-600 mb-1">API Response Preview:</div>
-                  <pre className="bg-gray-50 p-2 rounded border border-gray-200 max-h-32 overflow-auto text-xs">
+                    <div className="font-semibold text-gray-600 mb-1">API Response Preview:</div>
+                    <pre className="bg-gray-50 p-2 rounded border border-gray-200 max-h-32 overflow-auto text-xs">
                     {JSON.stringify(apiPreview, null, 2)}
-                  </pre>
+                    </pre>
                 </div>
-              )}
+                )}
             </>
+          )}
+        </Card>
+      )}
+
+      {/* API AUTOFILL for TEXT INPUT ONLY */}
+      {field.type === "text" && (
+        <Card icon={<FaCloud />} title="API Autofill" tooltip="Configure API to auto-fill other fields when this input changes.">
+          <div className="mb-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">API URL</label>
+            <input
+              className="w-full border rounded px-2 py-1 mb-1"
+              placeholder="https://api.example.com/lookup"
+              value={apiDraft?.url || ""}
+              onChange={e => setApiDraft(d => ({ ...d, url: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-2 mb-2">
+            <label className="block text-xs font-medium text-gray-600">Method</label>
+            <select
+              className="border rounded px-2 py-1"
+              value={apiDraft?.method || "GET"}
+              onChange={e => setApiDraft(d => ({ ...d, method: e.target.value }))}
+            >
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+            </select>
+          </div>
+          <div className="mb-2">
+            <label className="block text-xs font-medium text-gray-600">
+              Params (JSON)
+            </label>
+            <textarea
+              className="w-full border rounded px-2 py-1 text-xs"
+              value={paramText}
+              onChange={handleParamTextChange}
+              rows={2}
+            />
+            {apiError && (
+              <div className="text-red-600 text-xs mt-1">{apiError}</div>
+            )}
+            <div className="text-xs text-gray-500 mt-1">
+              Use <code>${'{fieldId}'}</code> to interpolate values.
+            </div>
+          </div>
+          {/* --- Response Mapping UI --- */}
+          <div className="mb-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Response Mapping
+            </label>
+            <div className="flex flex-col gap-2">
+              {(Object.entries(apiDraft?.responseMap || {})).map(([apiKey, fieldId], idx) => (
+                <div key={apiKey + idx} className="flex gap-2 items-center">
+                  <input
+                    className="border rounded px-2 py-1 flex-1"
+                    placeholder="API response key"
+                    value={apiKey}
+                    onChange={e => {
+                      const newMap = { ...apiDraft.responseMap };
+                      const oldValue = newMap[apiKey];
+                      delete newMap[apiKey];
+                      newMap[e.target.value] = oldValue;
+                      setApiDraft(d => ({ ...d, responseMap: newMap }));
+                    }}
+                  />
+                  <select
+                    className="border rounded px-2 py-1 flex-1"
+                    value={fieldId}
+                    onChange={e => {
+                      setApiDraft(d => ({
+                        ...d,
+                        responseMap: { ...d.responseMap, [apiKey]: e.target.value }
+                      }));
+                    }}
+                  >
+                    <option value="">Select field to autofill</option>
+                    {flattenFields(fields)
+                      .filter(f => f.type === "text")
+                      .map(f => (
+                        <option key={f.id} value={f.id}>
+                          {f.label || f.id}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="text-red-500"
+                    onClick={() => {
+                      const newMap = { ...apiDraft.responseMap };
+                      delete newMap[apiKey];
+                      setApiDraft(d => ({ ...d, responseMap: newMap }));
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {/* Add new mapping row */}
+              <div className="flex gap-2 items-center">
+                <input
+                  className="border rounded px-2 py-1 flex-1"
+                  placeholder="API response key"
+                  value={apiDraft?._newApiKey || ""}
+                  onChange={e => setApiDraft(d => ({ ...d, _newApiKey: e.target.value }))}
+                />
+                <select
+                  className="border rounded px-2 py-1 flex-1"
+                  value={apiDraft?._newFieldId || ""}
+                  onChange={e => setApiDraft(d => ({ ...d, _newFieldId: e.target.value }))}
+                >
+                  <option value="">Select field to autofill</option>
+                  {flattenFields(fields)
+                    .filter(f => f.type === "text")
+                    .map(f => (
+                      <option key={f.id} value={f.id}>
+                        {f.label || f.id}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="button"
+                  className="bg-blue-500 text-white px-2 py-1 rounded"
+                  onClick={() => {
+                    if (apiDraft._newApiKey && apiDraft._newFieldId) {
+                      setApiDraft(d => ({
+                        ...d,
+                        responseMap: {
+                          ...(d.responseMap || {}),
+                          [d._newApiKey]: d._newFieldId
+                        },
+                        _newApiKey: "",
+                        _newFieldId: ""
+                      }));
+                    }
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Map API response keys to text fields for autofill.
+            </div>
+          </div>
+          <button
+            className="bg-blue-600 text-white px-4 py-1 rounded font-semibold hover:bg-blue-700"
+            onClick={handleApiSave}
+            type="button"
+            disabled={apiLoading || !!apiError}
+          >
+            {apiLoading ? "Saving & Fetching..." : "Save"}
+          </button>
+          {apiPreview && Object.keys(apiPreview).length > 0 && (
+            <div className="mt-3 text-xs">
+              <div className="font-semibold text-gray-600 mb-1">API Response Preview:</div>
+              <pre className="bg-gray-50 p-2 rounded border border-gray-200 max-h-32 overflow-auto text-xs">
+                {JSON.stringify(apiPreview, null, 2)}
+              </pre>
+            </div>
           )}
         </Card>
       )}

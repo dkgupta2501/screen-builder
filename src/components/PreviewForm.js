@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 
+function interpolateUrl(url, values) {
+    return url.replace(/\$\{([^}]+)\}/g, (_, key) => values[key] || "");
+  }
+
+
 // Helper: Validate a single field
 function validateField(field, value) {
   if (field.disabled) return null;
@@ -161,15 +166,16 @@ export default function PreviewForm({ fields }) {
         const fetchOptions = async () => {
           try {
             let response;
+            const interpolatedUrl = interpolateUrl(url, values);
             if (method === "POST") {
-              response = await fetch(url, {
+              response = await fetch(interpolatedUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(realParams)
               });
             } else {
               const qStr = new URLSearchParams(realParams).toString();
-              response = await fetch(qStr ? `${url}?${qStr}` : url);
+              response = await fetch(qStr ? `${url}?${qStr}` : interpolatedUrl);
             }
             const json = await response.json();
             let items = json;
@@ -257,21 +263,57 @@ export default function PreviewForm({ fields }) {
                       {field.required ? <span className="text-red-500">*</span> : null}
                     </label>
                     {field.type === "text" && (
-                      <input
-                        type="text"
-                        className={`w-full border rounded px-3 py-2 text-base ${
-                          errors[field.id] ? "border-red-500" : ""
-                        }`}
-                        placeholder={field.placeholder || "Text input"}
-                        disabled={field.disabled}
-                        readOnly={field.readOnly}
-                        minLength={field.minLength || undefined}
-                        maxLength={field.maxLength || undefined}
-                        required={field.required}
-                        value={values[field.id] ?? ""}
-                        onChange={e => handleChange(field, e.target.value)}
-                      />
+                        <input
+                            type="text"
+                            className={`w-full border rounded px-3 py-2 text-base ${
+                            errors[field.id] ? "border-red-500" : ""
+                            }`}
+                            placeholder={field.placeholder || "Text input"}
+                            disabled={field.disabled}
+                            readOnly={field.readOnly}
+                            minLength={field.minLength || undefined}
+                            maxLength={field.maxLength || undefined}
+                            required={field.required}
+                            value={values[field.id] ?? ""}
+                            onChange={e => handleChange(field, e.target.value)}
+                            onBlur={async e => {
+                            const val = e.target.value;
+                            if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                                const mergedValues = { ...values, [field.id]: val };
+                                const interpolatedUrl = interpolateUrl(field.apiConfig.url, mergedValues);
+                                const params = interpolateParams(field.apiConfig.params || {}, mergedValues);
+                            
+                                try {
+                                let response;
+                                if (field.apiConfig.method === 'POST') {
+                                    response = await fetch(interpolatedUrl, {
+                                    method: 'POST',
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify(params)
+                                    });
+                                } else {
+                                    const qStr = new URLSearchParams(params).toString();
+                                    response = await fetch(qStr ? `${field.apiConfig.url}?${qStr}` : interpolatedUrl);
+                                }
+                                const json = await response.json();
+                                // Apply mapping:
+                                const updates = {};
+                                for (const [apiKey, targetFieldId] of Object.entries(field.apiConfig.responseMap)) {
+                                    if (json[apiKey] !== undefined) {
+                                    updates[targetFieldId] = json[apiKey];
+                                    }
+                                }
+                                if (Object.keys(updates).length) {
+                                    setValues(v => ({ ...v, ...updates }));
+                                }
+                                } catch (err) {
+                                // You can show an error toast or log error here if you want
+                                }
+                            }
+                            }}
+                        />
                     )}
+
                     {field.type === "radio" && (
                       <div className="flex gap-4">
                         {field.apiConfig

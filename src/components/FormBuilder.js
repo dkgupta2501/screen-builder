@@ -3,6 +3,10 @@ import { useDrop } from 'react-dnd';
 import { v4 as uuidv4 } from 'uuid';
 import DraggableField from './DraggableField';
 
+function interpolateUrl(url, values) {
+    return url.replace(/\$\{([^}]+)\}/g, (_, key) => values[key] || "");
+  }
+
 function isFieldVisible(field, fields, values   ) {
   if (!field.dependency) return true;
   const depField = fields.find(f => f.id === field.dependency.fieldId);
@@ -186,21 +190,54 @@ function SectionContainer({
                           <span className="text-red-500">*</span>
                         ) : null}
                       </label>
-                      {field.type === 'text' && (
-                        <input
-                          type="text"
-                          className="w-full border rounded px-3 py-2 text-base"
-                          placeholder={field.placeholder || 'Text input'}
-                          disabled={field.disabled}
-                          readOnly={field.readOnly}
-                          minLength={field.minLength || undefined}
-                          maxLength={field.maxLength || undefined}
-                          value={values[field.id] ?? ''}
-                          onChange={e =>
-                            setValues(v => ({ ...v, [field.id]: e.target.value }))
-                          }
-                        />
-                      )}
+                        {field.type === 'text' && (
+                            <input
+                              type="text"
+                              className="w-full border rounded px-3 py-2 text-base"
+                              placeholder={field.placeholder || 'Text input'}
+                              disabled={field.disabled}
+                              readOnly={field.readOnly}
+                              minLength={field.minLength || undefined}
+                              maxLength={field.maxLength || undefined}
+                              value={values[field.id] ?? ''}
+                              onChange={e =>
+                                setValues(v => ({ ...v, [field.id]: e.target.value }))
+                              }
+                              onBlur={async e => {
+                                const val = e.target.value;
+                                if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                                  // Use your interpolateParams helper:
+                                  const params = interpolateParams(field.apiConfig.params || {}, { ...values, [field.id]: val });
+                                  try {
+                                    let response;
+                                    if (field.apiConfig.method === 'POST') {
+                                      response = await fetch(field.apiConfig.url, {
+                                        method: 'POST',
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify(params)
+                                      });
+                                    } else {
+                                      const qStr = new URLSearchParams(params).toString();
+                                      response = await fetch(qStr ? `${field.apiConfig.url}?${qStr}` : field.apiConfig.url);
+                                    }
+                                    const json = await response.json();
+                                    // Apply mapping:
+                                    const updates = {};
+                                    for (const [apiKey, targetFieldId] of Object.entries(field.apiConfig.responseMap)) {
+                                      if (json[apiKey] !== undefined) {
+                                        updates[targetFieldId] = json[apiKey];
+                                      }
+                                    }
+                                    if (Object.keys(updates).length) {
+                                      setValues(v => ({ ...v, ...updates }));
+                                    }
+                                  } catch (err) {
+                                    // You can show an error toast or log error here if you want
+                                  }
+                                }
+                              }}
+                            />
+                          )}                          
                       {field.type === 'radio' && (
                         <div className="flex gap-4">
                           {field.apiConfig
@@ -386,15 +423,16 @@ export default function FormBuilder({
         const fetchOptions = async () => {
           try {
             let response;
+            const interpolatedUrl = interpolateUrl(url, values);
             if (method === "POST") {
-              response = await fetch(url, {
+              response = await fetch(interpolatedUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(realParams)
               });
             } else {
               const qStr = new URLSearchParams(realParams).toString();
-              response = await fetch(qStr ? `${url}?${qStr}` : url);
+              response = await fetch(qStr ? `${url}?${qStr}` : interpolatedUrl);
             }
             const json = await response.json();
             let items = json;
