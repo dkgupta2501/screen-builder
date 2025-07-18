@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
+import { FaRegCopy } from "react-icons/fa";
 import { useDrop } from 'react-dnd';
 import { v4 as uuidv4 } from 'uuid';
 import DraggableField from './DraggableField';
@@ -70,6 +71,7 @@ function SectionContainer({
     apiOptionsMap,
     loadingApiOptionsMap,
   }) {
+    const [copiedFieldId, setCopiedFieldId] = useState(null);
     // Drop widgets inside this section
     const [{ isOverField }, dropField] = useDrop(() => ({
       accept: 'WIDGET',
@@ -177,13 +179,33 @@ function SectionContainer({
                         e.stopPropagation();
                         setSelectedFieldId(field.id);
                       }}
-                      className={`relative p-4 border rounded-xl cursor-pointer bg-white shadow transition-all ${
+                      className={`relative group p-4 border rounded-xl cursor-pointer bg-white shadow transition-all ${
                         isSelected
                           ? 'border-blue-500 ring-2 ring-blue-200'
                           : 'border-gray-200 hover:border-blue-400'
                       } ${!normallyVisible && !previewMode ? 'opacity-50' : ''}`}
                       style={{ pointerEvents: 'auto' }}
                     >
+                      {/* Copy Field ID button */}
+                      <button
+                        type="button"
+                        className="absolute top-2 right-2 z-10 text-xs text-gray-400 hover:text-blue-600 bg-white bg-opacity-90 rounded px-1 py-0.5 shadow transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        title="Copy Field ID"
+                        onClick={e => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(field.id);
+                        
+                          setCopiedFieldId(field.id);
+                          setTimeout(() => setCopiedFieldId(null), 1000);
+                        }}
+                      >
+                        <FaRegCopy />
+                      </button>
+                      {copiedFieldId === field.id && (
+                        <span className="absolute top-2 right-10 bg-green-500 text-white text-xs px-2 py-1 rounded shadow z-20">
+                          Copied!
+                        </span>
+                      )}
                       <label className="block font-semibold mb-2 text-gray-700 flex items-center gap-1">
                         {field.label}
                         {field.required ? (
