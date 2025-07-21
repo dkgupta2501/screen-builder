@@ -36,26 +36,46 @@ function flattenFields(fieldsArr) {
   }
 
   // Helper: Replace ${fieldId} with the current value (id/label/value) from form values
-function interpolateParams(params, values) {
+  function interpolateParams(params, values) {
     let result = {};
     Object.entries(params).forEach(([key, val]) => {
       if (typeof val === "string") {
-        const match = val.match(/^\$\{(.+)\}$/);
+        // Match ${fieldId} or ${fieldId.prop}
+        const match = val.match(/^\$\{([a-zA-Z0-9-]+)(?:\.([a-zA-Z0-9_]+))?\}$/);
         if (match) {
-          let fieldVal = values[match[1]];
-          if (fieldVal && typeof fieldVal === "object") {
-            fieldVal = fieldVal.id ?? fieldVal.value ?? fieldVal.label ?? "";
+          const fieldId = match[1];
+          const prop = match[2];
+          let fieldVal = values[fieldId];
+          // Handle arrays (e.g., checkbox)
+          if (Array.isArray(fieldVal)) {
+            // By default, if prop, pick from first; if no prop, send array of labels/ids
+            if (prop) {
+              fieldVal = fieldVal.length > 0 ? fieldVal[0][prop] ?? "" : "";
+            } else {
+              // Return array of labels if available, else ids, else []
+              fieldVal = fieldVal.map(
+                (obj) => obj.label ?? obj.id ?? obj.value ?? obj
+              );
+            }
+          } else if (fieldVal && typeof fieldVal === "object") {
+            // Object: use prop if present, else label/id/value
+            fieldVal = prop
+              ? fieldVal[prop] ?? ""
+              : fieldVal.label ?? fieldVal.id ?? fieldVal.value ?? "";
           }
-          result[key] = fieldVal || "";
+          // Primitive (string/number) or null/undefined
+          result[key] = fieldVal ?? "";
         } else {
           result[key] = val;
         }
       } else {
+        // For non-string param values
         result[key] = val;
       }
     });
     return result;
   }
+  
   
 
 // --- Section Container ---
