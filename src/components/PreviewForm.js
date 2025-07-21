@@ -35,6 +35,11 @@ function validateField(field, value) {
       return "Please select an option";
     }
   }
+  if (field.type === "checkbox") {
+    if (field.required && (!value || value.length === 0)) {
+      return "Please select at least one option";
+    }
+  }
   return null;
 }
 
@@ -56,6 +61,11 @@ function isFieldVisible(field, fields, values) {
   if (typeof val === "object" && val !== null) {
     return val.id === depVal || val.label === depVal;
   }
+  if (depField.type === "checkbox") {
+    // If dependency value is '*', show if any selected; else show if value is in selected array
+    if (depVal === "*") return Array.isArray(val) && val.length > 0;
+    return Array.isArray(val) && val.some(o => o.id === depVal);
+  }  
   return val === depVal;
 }
 
@@ -123,7 +133,7 @@ export default function PreviewForm({ fields }) {
     const allFields = flattenFields(fields);
   
     allFields.forEach(field => {
-      if (field.apiConfig && (field.type === "dropdown" || field.type === "radio")) {
+      if (field.apiConfig && (field.type === "dropdown" || field.type === "radio" || field.type === "checkbox")) {
         const {
           url,
           method = "GET",
@@ -410,6 +420,38 @@ export default function PreviewForm({ fields }) {
                         ))}
                       </select>
                     )}
+
+                    {field.type === 'checkbox' && (
+                      <div className="flex flex-col gap-2">
+                        {(field.options || []).length === 0 ? (
+                          <span className="text-xs text-gray-400">No options configured.</span>
+                        ) : (
+                          (field.options || []).map(opt => (
+                            <label key={opt.id} className="flex items-center gap-2 text-base">
+                              <input
+                                type="checkbox"
+                                disabled={field.disabled}
+                                checked={Array.isArray(values[field.id]) ? values[field.id].some(o => o.id === opt.id) : false}
+                                onChange={e => {
+                                  setValues(v => {
+                                    const current = Array.isArray(v[field.id]) ? [...v[field.id]] : [];
+                                    if (e.target.checked) {
+                                      return { ...v, [field.id]: [...current, opt] };
+                                    } else {
+                                      return { ...v, [field.id]: current.filter(o => o.id !== opt.id) };
+                                    }
+                                  });
+                                }}
+                              />
+                              {opt.label}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+
+
                     {field.description && (
                       <div className="mt-2 text-xs text-gray-500">{field.description}</div>
                     )}

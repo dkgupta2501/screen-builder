@@ -82,7 +82,7 @@ function SectionContainer({
           type: item.type,
           label: `${item.type.charAt(0).toUpperCase() + item.type.slice(1)} Field`,
           options:
-            item.type === 'radio' || item.type === 'dropdown'
+           item.type === 'radio' || item.type === 'dropdown' || item.type === 'checkbox'
               ? [
                   { id: uuidv4(), label: 'Option 1' },
                   { id: uuidv4(), label: 'Option 2' }
@@ -355,6 +355,39 @@ function SectionContainer({
                           ))}
                         </select>
                       )}
+                      
+                      
+                      {field.type === 'checkbox' && (
+  <div className="flex flex-col gap-2">
+    {(field.options || []).length === 0 ? (
+      <span className="text-xs text-gray-400">No options configured.</span>
+    ) : (
+      (field.options || []).map(opt => (
+        <label key={opt.id} className="flex items-center gap-2 text-base">
+          <input
+            type="checkbox"
+            disabled={field.disabled}
+            checked={Array.isArray(values[field.id]) ? values[field.id].some(o => o.id === opt.id) : false}
+            onChange={e => {
+              setValues(v => {
+                const current = Array.isArray(v[field.id]) ? [...v[field.id]] : [];
+                if (e.target.checked) {
+                  return { ...v, [field.id]: [...current, opt] };
+                } else {
+                  return { ...v, [field.id]: current.filter(o => o.id !== opt.id) };
+                }
+              });
+            }}
+          />
+          {opt.label}
+        </label>
+      ))
+    )}
+  </div>
+                      )}
+
+
+
                       {field.description && (
                         <div className="mt-2 text-xs text-gray-500">
                           {field.description}
@@ -432,7 +465,7 @@ export default function FormBuilder({
     const allFields = flattenFields(fields);
   
     allFields.forEach(field => {
-      if (field.apiConfig && (field.type === "dropdown" || field.type === "radio")) {
+      if (field.apiConfig && (field.type === "dropdown" || field.type === "radio"  || field.type === "checkbox" )) {
         const {
           url,
           method = "GET",

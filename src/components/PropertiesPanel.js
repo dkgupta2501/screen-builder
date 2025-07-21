@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { FaFont, FaCheck, FaList, FaDotCircle, FaCloud, FaLink, FaTrash, FaMagic } from "react-icons/fa";
+import { FaFont, FaCheck, FaList, FaDotCircle, FaCloud, FaLink, FaTrash, FaMagic ,FaCheckSquare} from "react-icons/fa";
 
 // --- Helpers ---
 
@@ -193,7 +193,6 @@ export default function PropertiesPanel({
     delete cleanedApiDraft._newApiKey;
     delete cleanedApiDraft._newFieldId;
   
-    updateField({ apiConfig: cleanedApiDraft, options: [] });
     setApiLoading(true);
     setApiError(null);
     setApiPreview([]);
@@ -204,7 +203,7 @@ export default function PropertiesPanel({
         params = {},
         mapOptions = { idKey: "", labelKey: "" },
         responsePath
-      } = cleanedApiDraft; // use cleanedApiDraft here!
+      } = cleanedApiDraft;
   
       let realParams = {};
       Object.entries(params).forEach(([key, val]) => {
@@ -239,6 +238,34 @@ export default function PropertiesPanel({
         }
       }
       setApiPreview(items);
+  
+      // ------- THE KEY LINE: Populate options property --------
+      let options = [];
+      if (mapOptions.idKey && mapOptions.labelKey && Array.isArray(items)) {
+        options = items.map(item => ({
+          id: item[mapOptions.idKey],
+          label: item[mapOptions.labelKey],
+          ...item
+        }));
+      } else if (mapOptions.labelKey && Array.isArray(items)) {
+        options = items.map(item => ({
+          id: item[mapOptions.labelKey],
+          label: item[mapOptions.labelKey],
+          ...item
+        }));
+      } else if (mapOptions.idKey && Array.isArray(items)) {
+        options = items.map(item => ({
+          id: item[mapOptions.idKey],
+          label: item[mapOptions.idKey],
+          ...item
+        }));
+      } else if (Array.isArray(items) && typeof items[0] === "string") {
+        options = items.map(str => ({ id: str, label: str }));
+      }
+  
+      // This sets the options in the actual field object immediately!
+      updateField({ apiConfig: cleanedApiDraft, options });
+  
       setApiLoading(false);
       setApiError(null);
     } catch (err) {
@@ -266,6 +293,7 @@ export default function PropertiesPanel({
     text: <FaFont />,
     dropdown: <FaList />,
     radio: <FaDotCircle />,
+    checkbox: <FaCheckSquare />, 
     section: <FaCheck />,
   };
 
@@ -322,7 +350,7 @@ export default function PropertiesPanel({
       </Card>
 
       {/* VALIDATION */}
-      {(["text", "dropdown", "date"].includes(field.type)) && (
+      {(["text", "dropdown", "date","checkbox"].includes(field.type)) && (
         <Card icon={<FaCheck />} title="Validation">
           <div className="flex gap-4 flex-wrap mb-2">
             <label className="flex items-center gap-2 text-sm">
@@ -411,7 +439,7 @@ export default function PropertiesPanel({
       )}
 
       {/* OPTIONS SOURCE: Only for Dropdown/Radio */}
-      {(field.type === "dropdown" || field.type === "radio") && (
+      {(field.type === "dropdown" || field.type === "radio" || field.type === "checkbox") && (
         <Card icon={<FaMagic />} title="Options Source" tooltip="Choose static or dynamic options.">
           <div className="mb-3">
             <select
@@ -840,7 +868,55 @@ export default function PropertiesPanel({
                   ))}
                 </select>
               )
-            )}
+                    )}
+
+{depField && depField.type === "checkbox" && (
+  // If static options exist
+  (depField.options && depField.options.length > 0 ? (
+    <select
+      className="border rounded px-2 py-1 flex-1 min-w-0"
+      value={field.dependency?.value || ""}
+      onChange={e =>
+        updateField({
+          dependency: {
+            fieldId: depField.id,
+            value: e.target.value
+          }
+        })
+      }
+    >
+      <option value="">-- Select value --</option>
+      <option value="*">[Any value selected]</option>
+      {(depField.options || []).map(opt => (
+        <option key={opt.id} value={opt.id}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  ) : (
+    // If API-driven, ask user to enter option ID manually
+    <>
+      <input
+        className="border rounded px-2 py-1 flex-1 min-w-0"
+        placeholder="Option ID to match (see API data)"
+        value={field.dependency?.value || ""}
+        onChange={e =>
+          updateField({
+            dependency: {
+              fieldId: depField.id,
+              value: e.target.value
+            }
+          })
+        }
+      />
+      <div className="text-xs text-gray-500 mt-1">
+        For API-driven checkboxes, enter the option ID from the API response.
+      </div>
+    </>
+  ))
+)}
+
+
             {depField && depField.type === "text" && (
               <input
                 className="border rounded px-2 py-1 flex-1 min-w-0"
