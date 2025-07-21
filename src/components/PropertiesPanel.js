@@ -322,7 +322,7 @@ export default function PropertiesPanel({
       </Card>
 
       {/* VALIDATION */}
-      {(field.type === "text" || field.type === "dropdown") && (
+      {(["text", "dropdown", "date"].includes(field.type)) && (
         <Card icon={<FaCheck />} title="Validation">
           <div className="flex gap-4 flex-wrap mb-2">
             <label className="flex items-center gap-2 text-sm">
@@ -341,7 +341,7 @@ export default function PropertiesPanel({
               />
               Disabled
             </label>
-            {field.type === "text" && (
+            {["text", "date"].includes(field.type) && (
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -610,8 +610,8 @@ export default function PropertiesPanel({
         </Card>
       )}
 
-      {/* API AUTOFILL for TEXT INPUT ONLY */}
-      {field.type === "text" && (
+      {/* API AUTOFILL for TEXT AND DATE INPUT ONLY */}
+      {["text", "date"].includes(field.type) && (
         <Card icon={<FaCloud />} title="API Autofill" tooltip="Configure API to auto-fill other fields when this input changes.">
           <div className="mb-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">API URL</label>
@@ -709,7 +709,7 @@ export default function PropertiesPanel({
       >
         <option value="">Select field to autofill</option>
         {flattenFields(fields)
-          .filter(f => f.type === "text")
+          .filter(f => ["text", "date"].includes(f.type))
           .map(f => (
             <option key={f.id} value={f.id}>
               {f.label} [{f.id.slice(0, 6)}]
@@ -797,7 +797,8 @@ export default function PropertiesPanel({
               ))}
             </select>
             {/* Value select/input depending on dep field type */}
-            {depField && (depField.type === "radio" || depField.type === "dropdown") && (
+                     {/* Value select/input depending on dep field type */}
+                     {depField && (depField.type === "radio" || depField.type === "dropdown") && (
               depField.apiConfig ? (
                 <>
                   <input
@@ -839,6 +840,55 @@ export default function PropertiesPanel({
                   ))}
                 </select>
               )
+            )}
+            {depField && depField.type === "text" && (
+              <input
+                className="border rounded px-2 py-1 flex-1 min-w-0"
+                placeholder="Value to match"
+                value={field.dependency?.value || ""}
+                onChange={e =>
+                  updateField({
+                    dependency: {
+                      fieldId: depField.id,
+                      value: e.target.value
+                    }
+                  })
+                }
+              />
+            )}
+            {depField && depField.type === "date" && (
+              <div className="flex gap-2 w-full">
+                <select
+                  className="border rounded px-2 py-1 flex-1 min-w-0"
+                  value={field.dependency?.value === "*" ? "*" : ""}
+                  onChange={e =>
+                    updateField({
+                      dependency: {
+                        fieldId: depField.id,
+                        value: e.target.value
+                      }
+                    })
+                  }
+                >
+                  <option value="">-- Select value --</option>
+                  <option value="*">[Any date selected]</option>
+                </select>
+                <input
+                  type="date"
+                  className="border rounded px-2 py-1 flex-1 min-w-0"
+                  placeholder="YYYY-MM-DD"
+                  value={field.dependency?.value && field.dependency?.value !== "*" ? field.dependency.value : ""}
+                  onChange={e =>
+                    updateField({
+                      dependency: {
+                        fieldId: depField.id,
+                        value: e.target.value
+                      }
+                    })
+                  }
+                  disabled={field.dependency?.value === "*"}
+                />
+              </div>
             )}
             {depField && depField.type === "text" && (
               <input

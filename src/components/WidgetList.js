@@ -1,7 +1,7 @@
 // src/components/WidgetList.js
 import React from 'react';
 import { useDrag } from 'react-dnd';
-import { FaFont, FaDotCircle, FaList, FaFolder } from 'react-icons/fa';
+import { FaFont, FaDotCircle, FaList, FaFolder ,FaCalendar} from 'react-icons/fa';
 
 
 const widgets = [
@@ -9,6 +9,7 @@ const widgets = [
   { type: 'text', label: 'Text Input', icon: <FaFont /> },
   { type: 'radio', label: 'Radio Button', icon: <FaDotCircle /> },
   { type: 'dropdown', label: 'Dropdown', icon: <FaList /> },
+  { type: 'date', label: 'Date Picker', icon: <FaCalendar /> },
 ];
 
 function WidgetItem({ type, label, icon }) {

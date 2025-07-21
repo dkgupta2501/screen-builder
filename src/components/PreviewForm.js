@@ -279,6 +279,7 @@ export default function PreviewForm({ fields }) {
                             onBlur={async e => {
                             const val = e.target.value;
                             if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                                const allFields = flattenFields(fields);
                                 const mergedValues = { ...values, [field.id]: val };
                                 const interpolatedUrl = interpolateUrl(field.apiConfig.url, mergedValues);
                                 const params = interpolateParams(field.apiConfig.params || {}, mergedValues);
@@ -300,6 +301,15 @@ export default function PreviewForm({ fields }) {
                                 const updates = {};
                                 for (const [apiKey, targetFieldId] of Object.entries(field.apiConfig.responseMap)) {
                                     if (json[apiKey] !== undefined) {
+                                      let value = json[apiKey];
+                                      // Check if the target field is a date field:
+                                      const targetField = allFields.find(f => f.id === targetFieldId);
+                                      if (targetField?.type === "date") {
+                                        // If it's a datetime string, extract just the date:
+                                        if (typeof value === "string" && value.length >= 10) {
+                                          value = value.substring(0, 10); // Take 'YYYY-MM-DD'
+                                        }
+                                      }
                                     updates[targetFieldId] = json[apiKey];
                                     }
                                 }
@@ -313,6 +323,26 @@ export default function PreviewForm({ fields }) {
                             }}
                         />
                     )}
+
+
+                    {field.type === "date" && (
+                      <input
+                        type="date"
+                        className={`w-full border rounded px-3 py-2 text-base ${errors[field.id] ? "border-red-500" : ""}`}
+                        placeholder={field.placeholder || "Select date"}
+                        disabled={field.disabled}
+                        readOnly={field.readOnly}
+                        value={values[field.id] ?? ""}
+                        onChange={e => handleChange(field, e.target.value)}
+                        onBlur={async e => {
+                          const val = e.target.value;
+                          if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                            // interpolate params, fetch, map response...
+                          }
+                        }}
+                      />
+                    )}
+
 
                     {field.type === "radio" && (
                       <div className="flex gap-4">
