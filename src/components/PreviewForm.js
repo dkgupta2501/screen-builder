@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+
 
 function interpolateUrl(url, values) {
-    return url.replace(/\$\{([^}]+)\}/g, (_, key) => values[key] || "");
-  }
+  return url.replace(/\$\{([^}]+)\}/g, (_, key) => values[key] || "");
+}
 
 
 // Helper: Validate a single field
@@ -65,7 +68,7 @@ function isFieldVisible(field, fields, values) {
     // If dependency value is '*', show if any selected; else show if value is in selected array
     if (depVal === "*") return Array.isArray(val) && val.length > 0;
     return Array.isArray(val) && val.some(o => o.id === depVal);
-  }  
+  }
   return val === depVal;
 }
 
@@ -82,60 +85,60 @@ function flattenSectionFields(fieldsArr) {
 
 // Helper: Recursively flatten all fields inside all sections
 function flattenFields(fieldsArr) {
-    let all = [];
-    fieldsArr.forEach(f => {
-      if (f.type === 'section' && Array.isArray(f.fields)) {
-        all = all.concat(flattenFields(f.fields));
-      } else {
-        all.push(f);
-      }
-    });
-    return all;
-  }
-  
-  // Helper: Replace ${parentId.key} or ${parentId} with current value from form state
-  function interpolateParams(params, values) {
-    let result = {};
-    Object.entries(params).forEach(([key, val]) => {
-      if (typeof val === "string") {
-        // Match ${fieldId} or ${fieldId.prop}
-        const match = val.match(/^\$\{([a-zA-Z0-9-]+)(?:\.([a-zA-Z0-9_]+))?\}$/);
-        if (match) {
-          const fieldId = match[1];
-          const prop = match[2];
-          let fieldVal = values[fieldId];
-          // Handle arrays (e.g., checkbox)
-          if (Array.isArray(fieldVal)) {
-            // By default, if prop, pick from first; if no prop, send array of labels/ids
-            if (prop) {
-              fieldVal = fieldVal.length > 0 ? fieldVal[0][prop] ?? "" : "";
-            } else {
-              // Return array of labels if available, else ids, else []
-              fieldVal = fieldVal.map(
-                (obj) => obj.label ?? obj.id ?? obj.value ?? obj
-              );
-            }
-          } else if (fieldVal && typeof fieldVal === "object") {
-            // Object: use prop if present, else label/id/value
-            fieldVal = prop
-              ? fieldVal[prop] ?? ""
-              : fieldVal.label ?? fieldVal.id ?? fieldVal.value ?? "";
+  let all = [];
+  fieldsArr.forEach(f => {
+    if (f.type === 'section' && Array.isArray(f.fields)) {
+      all = all.concat(flattenFields(f.fields));
+    } else {
+      all.push(f);
+    }
+  });
+  return all;
+}
+
+// Helper: Replace ${parentId.key} or ${parentId} with current value from form state
+function interpolateParams(params, values) {
+  let result = {};
+  Object.entries(params).forEach(([key, val]) => {
+    if (typeof val === "string") {
+      // Match ${fieldId} or ${fieldId.prop}
+      const match = val.match(/^\$\{([a-zA-Z0-9-]+)(?:\.([a-zA-Z0-9_]+))?\}$/);
+      if (match) {
+        const fieldId = match[1];
+        const prop = match[2];
+        let fieldVal = values[fieldId];
+        // Handle arrays (e.g., checkbox)
+        if (Array.isArray(fieldVal)) {
+          // By default, if prop, pick from first; if no prop, send array of labels/ids
+          if (prop) {
+            fieldVal = fieldVal.length > 0 ? fieldVal[0][prop] ?? "" : "";
+          } else {
+            // Return array of labels if available, else ids, else []
+            fieldVal = fieldVal.map(
+              (obj) => obj.label ?? obj.id ?? obj.value ?? obj
+            );
           }
-          // Primitive (string/number) or null/undefined
-          result[key] = fieldVal ?? "";
-        } else {
-          result[key] = val;
+        } else if (fieldVal && typeof fieldVal === "object") {
+          // Object: use prop if present, else label/id/value
+          fieldVal = prop
+            ? fieldVal[prop] ?? ""
+            : fieldVal.label ?? fieldVal.id ?? fieldVal.value ?? "";
         }
+        // Primitive (string/number) or null/undefined
+        result[key] = fieldVal ?? "";
       } else {
-        // For non-string param values
         result[key] = val;
       }
-    });
-    return result;
-  }
-  
-  
-  
+    } else {
+      // For non-string param values
+      result[key] = val;
+    }
+  });
+  return result;
+}
+
+
+
 
 export default function PreviewForm({ fields }) {
   const [values, setValues] = useState({});
@@ -148,7 +151,7 @@ export default function PreviewForm({ fields }) {
 
   useEffect(() => {
     const allFields = flattenFields(fields);
-  
+
     allFields.forEach(field => {
       if (field.apiConfig && (field.type === "dropdown" || field.type === "radio" || field.type === "checkbox")) {
         const {
@@ -159,20 +162,20 @@ export default function PreviewForm({ fields }) {
           responsePath,
           dependsOn = []
         } = field.apiConfig;
-  
+
         const realParams = interpolateParams(params, values);
-  
+
         // Generate a hash for current params and dependsOn values
         const paramsHash = JSON.stringify(realParams);
         const dependsHash = JSON.stringify((dependsOn || []).map(depId => values[depId]));
         const fieldHash = paramsHash + "|" + dependsHash;
-  
+
         // Compare with last called hash
         if (lastApiCallRef.current[field.id] === fieldHash) {
           // No need to call API again
           return;
         }
-  
+
         // Do not call API if any dependsOn value is missing
         if (
           Array.isArray(dependsOn) &&
@@ -185,11 +188,11 @@ export default function PreviewForm({ fields }) {
           setLoadingApiOptionsMap(prev => ({ ...prev, [field.id]: false }));
           return;
         }
-  
+
         // Save the new hash to prevent duplicate API calls
         lastApiCallRef.current[field.id] = fieldHash;
         setLoadingApiOptionsMap(prev => ({ ...prev, [field.id]: true }));
-  
+
         const fetchOptions = async () => {
           try {
             let response;
@@ -215,26 +218,26 @@ export default function PreviewForm({ fields }) {
             if (mapOptions.idKey && mapOptions.labelKey) {
               mapped = Array.isArray(items)
                 ? items.map(item => ({
-                    id: item[mapOptions.idKey],
-                    label: item[mapOptions.labelKey],
-                    ...item
-                  }))
+                  id: item[mapOptions.idKey],
+                  label: item[mapOptions.labelKey],
+                  ...item
+                }))
                 : [];
             } else if (mapOptions.labelKey) {
               mapped = Array.isArray(items)
                 ? items.map(item => ({
-                    id: item[mapOptions.labelKey],
-                    label: item[mapOptions.labelKey],
-                    ...item
-                  }))
+                  id: item[mapOptions.labelKey],
+                  label: item[mapOptions.labelKey],
+                  ...item
+                }))
                 : [];
             } else if (mapOptions.idKey) {
               mapped = Array.isArray(items)
                 ? items.map(item => ({
-                    id: item[mapOptions.idKey],
-                    label: item[mapOptions.idKey],
-                    ...item
-                  }))
+                  id: item[mapOptions.idKey],
+                  label: item[mapOptions.idKey],
+                  ...item
+                }))
                 : [];
             } else if (Array.isArray(items) && typeof items[0] === "string") {
               mapped = items.map(str => ({ id: str, label: str }));
@@ -248,7 +251,7 @@ export default function PreviewForm({ fields }) {
             setLoadingApiOptionsMap(prev => ({ ...prev, [field.id]: false }));
           }
         };
-  
+
         fetchOptions();
       }
     });
@@ -260,8 +263,8 @@ export default function PreviewForm({ fields }) {
       .flatMap(f => f.apiConfig.dependsOn.map(depId => values[depId])),
     JSON.stringify(values)
   ]);
-  
-  
+
+
 
   // Recursively render all widgets inside all sections
   function renderSections(fieldsArr) {
@@ -278,7 +281,8 @@ export default function PreviewForm({ fields }) {
               <div className="text-sm text-gray-500 mb-2">{section.description}</div>
             )}
             <div className="mt-2 grid gap-6" style={{
-    gridTemplateColumns: `repeat(${section.columns || 1}, minmax(0, 1fr))`}}>
+              gridTemplateColumns: `repeat(${section.columns || 1}, minmax(0, 1fr))`
+            }}>
               {section.fields && section.fields.map(field => {
                 if (!isFieldVisible(field, section.fields, values)) return null;
                 const apiOptions = apiOptionsMap[field.id] || [];
@@ -290,65 +294,64 @@ export default function PreviewForm({ fields }) {
                       {field.required ? <span className="text-red-500">*</span> : null}
                     </label>
                     {field.type === "text" && (
-                        <input
-                            type="text"
-                            className={`w-full border rounded px-3 py-2 text-base ${
-                            errors[field.id] ? "border-red-500" : ""
-                            }`}
-                            placeholder={field.placeholder || "Text input"}
-                            disabled={field.disabled}
-                            readOnly={field.readOnly}
-                            minLength={field.minLength || undefined}
-                            maxLength={field.maxLength || undefined}
-                            required={field.required}
-                            value={values[field.id] ?? ""}
-                            onChange={e => handleChange(field, e.target.value)}
-                            onBlur={async e => {
-                            const val = e.target.value;
-                            if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
-                                const allFields = flattenFields(fields);
-                                const mergedValues = { ...values, [field.id]: val };
-                                const interpolatedUrl = interpolateUrl(field.apiConfig.url, mergedValues);
-                                const params = interpolateParams(field.apiConfig.params || {}, mergedValues);
-                            
-                                try {
-                                let response;
-                                if (field.apiConfig.method === 'POST') {
-                                    response = await fetch(interpolatedUrl, {
-                                    method: 'POST',
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify(params)
-                                    });
-                                } else {
-                                    const qStr = new URLSearchParams(params).toString();
-                                    response = await fetch(qStr ? `${field.apiConfig.url}?${qStr}` : interpolatedUrl);
-                                }
-                                const json = await response.json();
-                                // Apply mapping:
-                                const updates = {};
-                                for (const [apiKey, targetFieldId] of Object.entries(field.apiConfig.responseMap)) {
-                                    if (json[apiKey] !== undefined) {
-                                      let value = json[apiKey];
-                                      // Check if the target field is a date field:
-                                      const targetField = allFields.find(f => f.id === targetFieldId);
-                                      if (targetField?.type === "date") {
-                                        // If it's a datetime string, extract just the date:
-                                        if (typeof value === "string" && value.length >= 10) {
-                                          value = value.substring(0, 10); // Take 'YYYY-MM-DD'
-                                        }
-                                      }
-                                    updates[targetFieldId] = json[apiKey];
+                      <input
+                        type="text"
+                        className={`w-full border rounded px-3 py-2 text-base ${errors[field.id] ? "border-red-500" : ""
+                          }`}
+                        placeholder={field.placeholder || "Text input"}
+                        disabled={field.disabled}
+                        readOnly={field.readOnly}
+                        minLength={field.minLength || undefined}
+                        maxLength={field.maxLength || undefined}
+                        required={field.required}
+                        value={values[field.id] ?? ""}
+                        onChange={e => handleChange(field, e.target.value)}
+                        onBlur={async e => {
+                          const val = e.target.value;
+                          if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                            const allFields = flattenFields(fields);
+                            const mergedValues = { ...values, [field.id]: val };
+                            const interpolatedUrl = interpolateUrl(field.apiConfig.url, mergedValues);
+                            const params = interpolateParams(field.apiConfig.params || {}, mergedValues);
+
+                            try {
+                              let response;
+                              if (field.apiConfig.method === 'POST') {
+                                response = await fetch(interpolatedUrl, {
+                                  method: 'POST',
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify(params)
+                                });
+                              } else {
+                                const qStr = new URLSearchParams(params).toString();
+                                response = await fetch(qStr ? `${field.apiConfig.url}?${qStr}` : interpolatedUrl);
+                              }
+                              const json = await response.json();
+                              // Apply mapping:
+                              const updates = {};
+                              for (const [apiKey, targetFieldId] of Object.entries(field.apiConfig.responseMap)) {
+                                if (json[apiKey] !== undefined) {
+                                  let value = json[apiKey];
+                                  // Check if the target field is a date field:
+                                  const targetField = allFields.find(f => f.id === targetFieldId);
+                                  if (targetField?.type === "date") {
+                                    // If it's a datetime string, extract just the date:
+                                    if (typeof value === "string" && value.length >= 10) {
+                                      value = value.substring(0, 10); // Take 'YYYY-MM-DD'
                                     }
+                                  }
+                                  updates[targetFieldId] = json[apiKey];
                                 }
-                                if (Object.keys(updates).length) {
-                                    setValues(v => ({ ...v, ...updates }));
-                                }
-                                } catch (err) {
-                                // You can show an error toast or log error here if you want
-                                }
+                              }
+                              if (Object.keys(updates).length) {
+                                setValues(v => ({ ...v, ...updates }));
+                              }
+                            } catch (err) {
+                              // You can show an error toast or log error here if you want
                             }
-                            }}
-                        />
+                          }
+                        }}
+                      />
                     )}
 
 
@@ -377,23 +380,6 @@ export default function PreviewForm({ fields }) {
                           ? loadingApiOptions
                             ? <span>Loading...</span>
                             : apiOptions.map(opt => (
-                                <label key={opt.id} className="flex items-center gap-2 text-base">
-                                  <input
-                                    type="radio"
-                                    name={field.id}
-                                    disabled={field.disabled}
-                                    checked={
-                                      typeof values[field.id] === "object"
-                                        ? values[field.id]?.id === opt.id
-                                        : values[field.id] === opt.id
-                                    }
-                                    required={field.required}
-                                    onChange={() => handleChange(field, opt)}
-                                  />
-                                  {opt.label}
-                                </label>
-                              ))
-                          : (field.options || []).map(opt => (
                               <label key={opt.id} className="flex items-center gap-2 text-base">
                                 <input
                                   type="radio"
@@ -410,6 +396,23 @@ export default function PreviewForm({ fields }) {
                                 {opt.label}
                               </label>
                             ))
+                          : (field.options || []).map(opt => (
+                            <label key={opt.id} className="flex items-center gap-2 text-base">
+                              <input
+                                type="radio"
+                                name={field.id}
+                                disabled={field.disabled}
+                                checked={
+                                  typeof values[field.id] === "object"
+                                    ? values[field.id]?.id === opt.id
+                                    : values[field.id] === opt.id
+                                }
+                                required={field.required}
+                                onChange={() => handleChange(field, opt)}
+                              />
+                              {opt.label}
+                            </label>
+                          ))
                         }
                       </div>
                     )}
@@ -417,14 +420,13 @@ export default function PreviewForm({ fields }) {
                       <select
                         disabled={field.disabled}
                         multiple={field.allowMultiple}
-                        className={`w-full border rounded px-3 py-2 text-base ${
-                          errors[field.id] ? "border-red-500" : ""
-                        }`}
+                        className={`w-full border rounded px-3 py-2 text-base ${errors[field.id] ? "border-red-500" : ""
+                          }`}
                         value={values[field.id] ? JSON.stringify(values[field.id]) : ""}
                         required={field.required}
                         onChange={e => {
                           let value = e.target.value;
-                          try { value = JSON.parse(value); } catch {}
+                          try { value = JSON.parse(value); } catch { }
                           handleChange(field, value);
                         }}
                         readOnly={field.readOnly}
@@ -465,6 +467,21 @@ export default function PreviewForm({ fields }) {
                           ))
                         )}
                       </div>
+                    )}
+
+                    {field.type === 'switch' && (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={!!values[field.id]}
+                            onChange={e => setValues(v => ({ ...v, [field.id]: e.target.checked }))}
+                            disabled={field.disabled}
+                            inputProps={{ 'aria-label': field.label }}
+                          />
+                        }
+                        label={field.label}
+                        sx={{ ml: 0 }} // removes default left margin
+                      />
                     )}
 
 

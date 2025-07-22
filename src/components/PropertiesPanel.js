@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { FaFont, FaCheck, FaList, FaDotCircle, FaCloud, FaLink, FaTrash, FaMagic ,FaCheckSquare} from "react-icons/fa";
+import { FaFont, FaCheck, FaList, FaDotCircle, FaCloud, FaLink, FaTrash, FaMagic, FaCheckSquare } from "react-icons/fa";
 
 // --- Helpers ---
 
@@ -192,7 +192,7 @@ export default function PropertiesPanel({
     };
     delete cleanedApiDraft._newApiKey;
     delete cleanedApiDraft._newFieldId;
-  
+
     setApiLoading(true);
     setApiError(null);
     setApiPreview([]);
@@ -204,7 +204,7 @@ export default function PropertiesPanel({
         mapOptions = { idKey: "", labelKey: "" },
         responsePath
       } = cleanedApiDraft;
-  
+
       let realParams = {};
       Object.entries(params).forEach(([key, val]) => {
         if (typeof val === "string") {
@@ -218,7 +218,7 @@ export default function PropertiesPanel({
           realParams[key] = val;
         }
       });
-  
+
       let response;
       if (method === "POST") {
         response = await fetch(url, {
@@ -238,7 +238,7 @@ export default function PropertiesPanel({
         }
       }
       setApiPreview(items);
-  
+
       // ------- THE KEY LINE: Populate options property --------
       let options = [];
       if (mapOptions.idKey && mapOptions.labelKey && Array.isArray(items)) {
@@ -262,10 +262,10 @@ export default function PropertiesPanel({
       } else if (Array.isArray(items) && typeof items[0] === "string") {
         options = items.map(str => ({ id: str, label: str }));
       }
-  
+
       // This sets the options in the actual field object immediately!
       updateField({ apiConfig: cleanedApiDraft, options });
-  
+
       setApiLoading(false);
       setApiError(null);
     } catch (err) {
@@ -274,7 +274,7 @@ export default function PropertiesPanel({
       setApiLoading(false);
     }
   };
-  
+
 
   // --- Cycle-safe dependency logic for "Visibility Dependency" only ---
   const flatFields = flattenFieldsWithDeps(fields);
@@ -293,7 +293,7 @@ export default function PropertiesPanel({
     text: <FaFont />,
     dropdown: <FaList />,
     radio: <FaDotCircle />,
-    checkbox: <FaCheckSquare />, 
+    checkbox: <FaCheckSquare />,
     section: <FaCheck />,
   };
 
@@ -350,7 +350,7 @@ export default function PropertiesPanel({
       </Card>
 
       {/* VALIDATION */}
-      {(["text", "dropdown", "date","checkbox"].includes(field.type)) && (
+      {(["text", "dropdown", "date", "checkbox", "switch"].includes(field.type)) && (
         <Card icon={<FaCheck />} title="Validation">
           <div className="flex gap-4 flex-wrap mb-2">
             <label className="flex items-center gap-2 text-sm">
@@ -625,13 +625,13 @@ export default function PropertiesPanel({
                 // Show only if array with >0, or object with >0 keys (but not if null/empty/false)
                 (Array.isArray(apiPreview) && apiPreview.length > 0) ||
                 (apiPreview && typeof apiPreview === 'object' && !Array.isArray(apiPreview) && Object.keys(apiPreview).length > 0)
-                ) && (
-                <div className="mt-3 text-xs">
+              ) && (
+                  <div className="mt-3 text-xs">
                     <div className="font-semibold text-gray-600 mb-1">API Response Preview:</div>
                     <pre className="bg-gray-50 p-2 rounded border border-gray-200 max-h-32 overflow-auto text-xs">
-                    {JSON.stringify(apiPreview, null, 2)}
+                      {JSON.stringify(apiPreview, null, 2)}
                     </pre>
-                </div>
+                  </div>
                 )}
             </>
           )}
@@ -679,102 +679,101 @@ export default function PropertiesPanel({
             </div>
           </div>
           {/* --- Response Mapping UI --- */}
-         {/* --- Response Mapping UI --- */}
-<div className="mb-2">
-  <label className="block text-xs font-medium text-gray-600 mb-1">
-    Response Mapping <span className="text-gray-400">(Map API response to fields)</span>
-  </label>
-  <div className="space-y-2">
-    {/* Mapping List */}
-    {Object.keys(apiDraft?.responseMap || {}).length === 0 && (
-      <div className="text-xs text-gray-400 italic px-2 py-3 border border-dashed rounded bg-gray-50 mb-2">
-        No mappings yet. Add a response key and select a field below.
-      </div>
-    )}
-    {Object.entries(apiDraft?.responseMap || {}).map(([apiKey, fieldId], idx) => {
-      const fieldInfo = flattenFields(fields).find(f => f.id === fieldId);
-      return (
-        <div
-          key={apiKey + idx}
-          className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 transition group"
-        >
-          <span className="font-mono text-xs text-blue-700 min-w-[80px]">
-            {apiKey}
-          </span>
-          <span className="mx-1 text-gray-400">→</span>
-          <span className="flex-1 text-sm font-medium text-blue-900 truncate">
-            {fieldInfo?.label || "(field missing)"}{" "}
-            <span className="text-xs text-gray-400">[{fieldId.slice(0, 6)}]</span>
-          </span>
-          <button
-            type="button"
-            className="ml-2 text-red-400 hover:text-red-700 transition p-1"
-            title="Remove mapping"
-            onClick={() => {
-              const newMap = { ...apiDraft.responseMap };
-              delete newMap[apiKey];
-              setApiDraft(d => ({ ...d, responseMap: newMap }));
-            }}
-          >
-            ×
-          </button>
-        </div>
-      );
-    })}
+          {/* --- Response Mapping UI --- */}
+          <div className="mb-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Response Mapping <span className="text-gray-400">(Map API response to fields)</span>
+            </label>
+            <div className="space-y-2">
+              {/* Mapping List */}
+              {Object.keys(apiDraft?.responseMap || {}).length === 0 && (
+                <div className="text-xs text-gray-400 italic px-2 py-3 border border-dashed rounded bg-gray-50 mb-2">
+                  No mappings yet. Add a response key and select a field below.
+                </div>
+              )}
+              {Object.entries(apiDraft?.responseMap || {}).map(([apiKey, fieldId], idx) => {
+                const fieldInfo = flattenFields(fields).find(f => f.id === fieldId);
+                return (
+                  <div
+                    key={apiKey + idx}
+                    className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 transition group"
+                  >
+                    <span className="font-mono text-xs text-blue-700 min-w-[80px]">
+                      {apiKey}
+                    </span>
+                    <span className="mx-1 text-gray-400">→</span>
+                    <span className="flex-1 text-sm font-medium text-blue-900 truncate">
+                      {fieldInfo?.label || "(field missing)"}{" "}
+                      <span className="text-xs text-gray-400">[{fieldId.slice(0, 6)}]</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="ml-2 text-red-400 hover:text-red-700 transition p-1"
+                      title="Remove mapping"
+                      onClick={() => {
+                        const newMap = { ...apiDraft.responseMap };
+                        delete newMap[apiKey];
+                        setApiDraft(d => ({ ...d, responseMap: newMap }));
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
 
-    {/* Add new mapping row */}
-    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mt-1">
-      <input
-        className="border rounded px-2 py-1 flex-1 min-w-0 text-sm"
-        placeholder="API response key (e.g. name)"
-        value={apiDraft?._newApiKey || ""}
-        onChange={e => setApiDraft(d => ({ ...d, _newApiKey: e.target.value }))}
-      />
-      <select
-        className="border rounded px-2 py-1 flex-1 min-w-0 text-sm"
-        value={apiDraft?._newFieldId || ""}
-        onChange={e => setApiDraft(d => ({ ...d, _newFieldId: e.target.value }))}
-      >
-        <option value="">Select field to autofill</option>
-        {flattenFields(fields)
-          .filter(f => ["text", "date"].includes(f.type))
-          .map(f => (
-            <option key={f.id} value={f.id}>
-              {f.label} [{f.id.slice(0, 6)}]
-            </option>
-          ))}
-      </select>
-      <button
-        type="button"
-        className={`bg-blue-600 text-white px-4 py-1 rounded font-semibold shadow hover:bg-blue-700 transition ${
-          !(apiDraft?._newApiKey && apiDraft?._newFieldId)
-            ? "opacity-60 cursor-not-allowed"
-            : ""
-        }`}
-        onClick={() => {
-          if (apiDraft._newApiKey && apiDraft._newFieldId) {
-            setApiDraft(d => ({
-              ...d,
-              responseMap: {
-                ...(d.responseMap || {}),
-                [d._newApiKey]: d._newFieldId
-              },
-              _newApiKey: "",
-              _newFieldId: ""
-            }));
-          }
-        }}
-        disabled={!(apiDraft?._newApiKey && apiDraft?._newFieldId)}
-        tabIndex={0}
-      >
-        +
-      </button>
-    </div>
-    <div className="text-xs text-gray-500 mt-1 ml-1">
-      <b>Tip:</b> Add as many mappings as you need. Remove by clicking ×. Fields are auto-filled after API returns!
-    </div>
-  </div>
-</div>
+              {/* Add new mapping row */}
+              <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mt-1">
+                <input
+                  className="border rounded px-2 py-1 flex-1 min-w-0 text-sm"
+                  placeholder="API response key (e.g. name)"
+                  value={apiDraft?._newApiKey || ""}
+                  onChange={e => setApiDraft(d => ({ ...d, _newApiKey: e.target.value }))}
+                />
+                <select
+                  className="border rounded px-2 py-1 flex-1 min-w-0 text-sm"
+                  value={apiDraft?._newFieldId || ""}
+                  onChange={e => setApiDraft(d => ({ ...d, _newFieldId: e.target.value }))}
+                >
+                  <option value="">Select field to autofill</option>
+                  {flattenFields(fields)
+                    .filter(f => ["text", "date"].includes(f.type))
+                    .map(f => (
+                      <option key={f.id} value={f.id}>
+                        {f.label} [{f.id.slice(0, 6)}]
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="button"
+                  className={`bg-blue-600 text-white px-4 py-1 rounded font-semibold shadow hover:bg-blue-700 transition ${!(apiDraft?._newApiKey && apiDraft?._newFieldId)
+                      ? "opacity-60 cursor-not-allowed"
+                      : ""
+                    }`}
+                  onClick={() => {
+                    if (apiDraft._newApiKey && apiDraft._newFieldId) {
+                      setApiDraft(d => ({
+                        ...d,
+                        responseMap: {
+                          ...(d.responseMap || {}),
+                          [d._newApiKey]: d._newFieldId
+                        },
+                        _newApiKey: "",
+                        _newFieldId: ""
+                      }));
+                    }
+                  }}
+                  disabled={!(apiDraft?._newApiKey && apiDraft?._newFieldId)}
+                  tabIndex={0}
+                >
+                  +
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 mt-1 ml-1">
+                <b>Tip:</b> Add as many mappings as you need. Remove by clicking ×. Fields are auto-filled after API returns!
+              </div>
+            </div>
+          </div>
 
           <button
             className="bg-blue-600 text-white px-4 py-1 rounded font-semibold hover:bg-blue-700"
@@ -825,8 +824,8 @@ export default function PropertiesPanel({
               ))}
             </select>
             {/* Value select/input depending on dep field type */}
-                     {/* Value select/input depending on dep field type */}
-                     {depField && (depField.type === "radio" || depField.type === "dropdown") && (
+            {/* Value select/input depending on dep field type */}
+            {depField && (depField.type === "radio" || depField.type === "dropdown") && (
               depField.apiConfig ? (
                 <>
                   <input
@@ -868,53 +867,53 @@ export default function PropertiesPanel({
                   ))}
                 </select>
               )
-                    )}
+            )}
 
-{depField && depField.type === "checkbox" && (
-  // If static options exist
-  (depField.options && depField.options.length > 0 ? (
-    <select
-      className="border rounded px-2 py-1 flex-1 min-w-0"
-      value={field.dependency?.value || ""}
-      onChange={e =>
-        updateField({
-          dependency: {
-            fieldId: depField.id,
-            value: e.target.value
-          }
-        })
-      }
-    >
-      <option value="">-- Select value --</option>
-      <option value="*">[Any value selected]</option>
-      {(depField.options || []).map(opt => (
-        <option key={opt.id} value={opt.id}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  ) : (
-    // If API-driven, ask user to enter option ID manually
-    <>
-      <input
-        className="border rounded px-2 py-1 flex-1 min-w-0"
-        placeholder="Option ID to match (see API data)"
-        value={field.dependency?.value || ""}
-        onChange={e =>
-          updateField({
-            dependency: {
-              fieldId: depField.id,
-              value: e.target.value
-            }
-          })
-        }
-      />
-      <div className="text-xs text-gray-500 mt-1">
-        For API-driven checkboxes, enter the option ID from the API response.
-      </div>
-    </>
-  ))
-)}
+            {depField && depField.type === "checkbox" && (
+              // If static options exist
+              (depField.options && depField.options.length > 0 ? (
+                <select
+                  className="border rounded px-2 py-1 flex-1 min-w-0"
+                  value={field.dependency?.value || ""}
+                  onChange={e =>
+                    updateField({
+                      dependency: {
+                        fieldId: depField.id,
+                        value: e.target.value
+                      }
+                    })
+                  }
+                >
+                  <option value="">-- Select value --</option>
+                  <option value="*">[Any value selected]</option>
+                  {(depField.options || []).map(opt => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                // If API-driven, ask user to enter option ID manually
+                <>
+                  <input
+                    className="border rounded px-2 py-1 flex-1 min-w-0"
+                    placeholder="Option ID to match (see API data)"
+                    value={field.dependency?.value || ""}
+                    onChange={e =>
+                      updateField({
+                        dependency: {
+                          fieldId: depField.id,
+                          value: e.target.value
+                        }
+                      })
+                    }
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    For API-driven checkboxes, enter the option ID from the API response.
+                  </div>
+                </>
+              ))
+            )}
 
 
             {depField && depField.type === "text" && (
@@ -932,6 +931,7 @@ export default function PropertiesPanel({
                 }
               />
             )}
+
             {depField && depField.type === "date" && (
               <div className="flex gap-2 w-full">
                 <select
@@ -966,6 +966,7 @@ export default function PropertiesPanel({
                 />
               </div>
             )}
+
             {depField && depField.type === "text" && (
               <input
                 className="border rounded px-2 py-1 flex-1 min-w-0"
@@ -981,6 +982,28 @@ export default function PropertiesPanel({
                 }
               />
             )}
+
+            {depField && depField.type === "switch" && (
+              <select
+                className="border rounded px-2 py-1 flex-1 min-w-0"
+                value={field.dependency?.value ?? ""}
+                onChange={e =>
+                  updateField({
+                    dependency: {
+                      fieldId: depField.id,
+                      value: e.target.value === "true" ? true : e.target.value === "false" ? false : ""
+                    }
+                  })
+                }
+              >
+                <option value="">-- Select value --</option>
+                <option value="*">[Any value selected]</option>
+                <option value="true">On (true)</option>
+                <option value="false">Off (false)</option>
+              </select>
+            )}
+
+
           </div>
           <div className="text-xs text-gray-400 mt-1 break-words max-w-full">
             Show this field only if{" "}
@@ -1009,7 +1032,7 @@ export default function PropertiesPanel({
       >
         <button
           className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full font-bold"
-          onClick={deleteField}ß
+          onClick={deleteField} ß
           type="button"
         >
           Delete Field

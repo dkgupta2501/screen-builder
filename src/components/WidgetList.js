@@ -1,7 +1,7 @@
 // src/components/WidgetList.js
 import React from 'react';
 import { useDrag } from 'react-dnd';
-import { FaFont, FaDotCircle, FaList, FaFolder ,FaCalendar,FaCheckSquare} from 'react-icons/fa';
+import { FaFont, FaDotCircle, FaList, FaFolder, FaCalendar, FaCheckSquare, FaToggleOn } from 'react-icons/fa';
 
 
 const widgets = [
@@ -10,6 +10,7 @@ const widgets = [
   { type: 'radio', label: 'Radio Button', icon: <FaDotCircle /> },
   { type: 'dropdown', label: 'Dropdown', icon: <FaList /> },
   { type: 'checkbox', label: 'Checkbox Group', icon: <FaCheckSquare /> },
+  { type: 'switch', label: 'Switch', icon: <FaToggleOn /> },
   { type: 'date', label: 'Date Picker', icon: <FaCalendar /> },
 ];
 
@@ -25,9 +26,8 @@ function WidgetItem({ type, label, icon }) {
   return (
     <div
       ref={drag}
-      className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-gray-300 shadow-sm cursor-move mb-3 text-base font-medium bg-gray-50 hover:bg-gray-100 transition-all ${
-        isDragging ? 'opacity-40' : ''
-      }`}
+      className={`flex items-center gap-3 px-4 py-2 rounded-xl border border-gray-300 shadow-sm cursor-move mb-3 text-base font-medium bg-gray-50 hover:bg-gray-100 transition-all ${isDragging ? 'opacity-40' : ''
+        }`}
     >
       <span className="text-xl text-gray-500">{icon}</span>
       <span className="text-gray-800">{label}</span>
