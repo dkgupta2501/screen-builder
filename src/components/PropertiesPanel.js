@@ -328,7 +328,7 @@ export default function PropertiesPanel({
           </div>
         )}
         {/* Placeholder (for text) */}
-        {field.type === "text" && (
+        {["text", "textarea"].includes(field.type) && (
           <div className="mb-4">
             <label className="block font-medium text-gray-600 mb-1">Placeholder</label>
             <input
@@ -350,7 +350,7 @@ export default function PropertiesPanel({
       </Card>
 
       {/* VALIDATION */}
-      {(["text", "dropdown", "date", "checkbox", "switch"].includes(field.type)) && (
+      {(["text", "dropdown", "date", "checkbox", "switch", "textarea"].includes(field.type)) && (
         <Card icon={<FaCheck />} title="Validation">
           <div className="flex gap-4 flex-wrap mb-2">
             <label className="flex items-center gap-2 text-sm">
@@ -747,8 +747,8 @@ export default function PropertiesPanel({
                 <button
                   type="button"
                   className={`bg-blue-600 text-white px-4 py-1 rounded font-semibold shadow hover:bg-blue-700 transition ${!(apiDraft?._newApiKey && apiDraft?._newFieldId)
-                      ? "opacity-60 cursor-not-allowed"
-                      : ""
+                    ? "opacity-60 cursor-not-allowed"
+                    : ""
                     }`}
                   onClick={() => {
                     if (apiDraft._newApiKey && apiDraft._newFieldId) {
@@ -1003,6 +1003,23 @@ export default function PropertiesPanel({
               </select>
             )}
 
+
+
+            {depField && depField.type === "textarea" && (
+              <input
+                className="border rounded px-2 py-1 flex-1 min-w-0"
+                placeholder="Value to match"
+                value={field.dependency?.value || ""}
+                onChange={e =>
+                  updateField({
+                    dependency: {
+                      fieldId: depField.id,
+                      value: e.target.value
+                    }
+                  })
+                }
+              />
+            )}
 
           </div>
           <div className="text-xs text-gray-400 mt-1 break-words max-w-full">

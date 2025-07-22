@@ -484,6 +484,27 @@ export default function PreviewForm({ fields }) {
                       />
                     )}
 
+                    {field.type === 'textarea' && (
+                      <textarea
+                        className="w-full border rounded px-3 py-2 text-base"
+                        rows={field.rows || 4}
+                        placeholder={field.placeholder || 'Enter text'}
+                        disabled={field.disabled}
+                        readOnly={field.readOnly}
+                        minLength={field.minLength || undefined}
+                        maxLength={field.maxLength || undefined}
+                        required={field.required}
+                        value={values[field.id] ?? ''}
+                        onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
+                        onBlur={async e => {
+                          const val = e.target.value;
+                          // API autofill logic (copy same as text input)
+                          if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                            // ...API autofill logic here...
+                          }
+                        }}
+                      />
+                    )}
 
 
                     {field.description && (

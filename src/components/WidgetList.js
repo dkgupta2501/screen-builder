@@ -1,7 +1,7 @@
 // src/components/WidgetList.js
 import React from 'react';
 import { useDrag } from 'react-dnd';
-import { FaFont, FaDotCircle, FaList, FaFolder, FaCalendar, FaCheckSquare, FaToggleOn } from 'react-icons/fa';
+import { FaFont, FaDotCircle, FaList, FaFolder, FaCalendar, FaCheckSquare, FaToggleOn,FaTextHeight } from 'react-icons/fa';
 
 
 const widgets = [
@@ -11,6 +11,7 @@ const widgets = [
   { type: 'dropdown', label: 'Dropdown', icon: <FaList /> },
   { type: 'checkbox', label: 'Checkbox Group', icon: <FaCheckSquare /> },
   { type: 'switch', label: 'Switch', icon: <FaToggleOn /> },
+  { type: 'textarea', label: 'Textarea', icon: <FaTextHeight /> },
   { type: 'date', label: 'Date Picker', icon: <FaCalendar /> },
 ];
 
