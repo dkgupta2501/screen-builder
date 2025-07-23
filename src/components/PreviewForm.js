@@ -149,6 +149,131 @@ export default function PreviewForm({ fields }) {
 
   const lastApiCallRef = useRef({});
 
+
+
+  useEffect(() => {
+    // Loop through each field (section), find tables
+    flattenFields(fields).forEach(field => {
+      if (field.type === "table") {
+        // For each API-config dropdown column
+        (field.columns || []).forEach(col => {
+          if (col.type === "dropdown" && col.apiConfig) {
+            // For each row in the table
+            (values[field.id] || []).forEach((row, ridx) => {
+              // Interpolate params from this row
+              const params = { ...(col.apiConfig.params || {}) };
+              Object.keys(params).forEach(k => {
+                if (typeof params[k] === "string" && params[k].includes("${")) {
+                  const match = params[k].match(/\$\{([^}]+)\}/);
+                  if (match) {
+                    const depColExpr = match[1];
+                    if (depColExpr.includes('.')) {
+                      const [colId, prop] = depColExpr.split('.');
+                      params[k] = row[colId]?.[prop] || "";
+                    } else {
+                      params[k] = row[depColExpr] || "";
+                    }
+                  }
+                }
+              });
+              // DEBUG
+              console.log("CITY API", col.label, "params", params, "row", ridx);
+              // Only fetch if required param present
+              if (Object.values(params).some(v => v === "")) {
+                setApiOptionsMap(prev => ({
+                  ...prev,
+                  [field.id]: {
+                    ...(prev[field.id] || {}),
+                    [col.id]: { ...(prev[field.id]?.[col.id] || {}), [ridx]: [] }
+                  }
+                }));
+                return;
+              }
+              // Fetch!
+              const url = col.apiConfig.url;
+              const method = col.apiConfig.method || "GET";
+              const fetchOptions = async () => {
+                try {
+                  let response;
+                  if (method === "POST") {
+                    response = await fetch(url, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(params)
+                    });
+                  } else {
+                    const qStr = new URLSearchParams(params).toString();
+                    response = await fetch(qStr ? `${url}?${qStr}` : url);
+                  }
+                  const json = await response.json();
+                  let items = json;
+                  if (col.apiConfig.responsePath) {
+                    for (const seg of col.apiConfig.responsePath.split(".")) {
+                      items = items?.[seg];
+                    }
+                  }
+                  // Map options
+                  let mapped = [];
+                  const { idKey, labelKey } = col.apiConfig.mapOptions || {};
+                  if (idKey && labelKey) {
+                    mapped = Array.isArray(items)
+                      ? items.map(item => ({
+                        id: item[idKey],
+                        label: item[labelKey],
+                        ...item
+                      }))
+                      : [];
+                  } else if (labelKey) {
+                    mapped = Array.isArray(items)
+                      ? items.map(item => ({
+                        id: item[labelKey],
+                        label: item[labelKey],
+                        ...item
+                      }))
+                      : [];
+                  } else if (idKey) {
+                    mapped = Array.isArray(items)
+                      ? items.map(item => ({
+                        id: item[idKey],
+                        label: item[idKey],
+                        ...item
+                      }))
+                      : [];
+                  } else if (Array.isArray(items) && typeof items[0] === "string") {
+                    mapped = items.map(str => ({ id: str, label: str }));
+                  }
+                  // Store in cache
+                  setApiOptionsMap(prev => ({
+                    ...prev,
+                    [field.id]: {
+                      ...(prev[field.id] || {}),
+                      [col.id]: {
+                        ...(prev[field.id]?.[col.id] || {}),
+                        [ridx]: mapped
+                      }
+                    }
+                  }));
+                } catch (err) {
+                  setApiOptionsMap(prev => ({
+                    ...prev,
+                    [field.id]: {
+                      ...(prev[field.id] || {}),
+                      [col.id]: {
+                        ...(prev[field.id]?.[col.id] || {}),
+                        [ridx]: []
+                      }
+                    }
+                  }));
+                }
+              };
+              fetchOptions();
+            });
+          }
+        });
+      }
+    });
+  }, [fields, values]);
+
   useEffect(() => {
     const allFields = flattenFields(fields);
 
@@ -505,6 +630,133 @@ export default function PreviewForm({ fields }) {
                         }}
                       />
                     )}
+
+                    {field.type === "table" && (
+                      <div className="overflow-x-auto mt-2 mb-3">
+                        <table className="min-w-full border rounded">
+                          <thead>
+                            <tr>
+                              {(field.columns || []).map(col => (
+                                <th key={col.id} className="px-2 py-1 border-b text-left">{col.label}</th>
+                              ))}
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(values[field.id] || []).map((row, ridx) => (
+                              <tr key={ridx}>
+                                {(field.columns || []).map(col => {
+                                  // --- Per-column dependency check ---
+                                  let showCell = true;
+                                  if (col.dependency) {
+                                    const depVal = col.dependency.value;
+                                    const rowDepVal = row[col.dependency.fieldId];
+                                    if (depVal === "*") {
+                                      showCell = rowDepVal !== undefined && rowDepVal !== "" && rowDepVal !== null;
+                                    } else if (rowDepVal && typeof rowDepVal === "object") {
+                                      showCell =
+                                        rowDepVal.id === depVal ||
+                                        rowDepVal.label === depVal ||
+                                        rowDepVal.value === depVal;
+                                    } else {
+                                      showCell = rowDepVal === depVal;
+                                    }
+                                  }
+                                  if (!showCell) return <td key={col.id}></td>;
+
+                                  // --- Dropdown (API or static) ---
+                                  if (col.type === "dropdown") {
+                                    // Always use API options if present, else fallback to static
+                                    const apiOptions = (apiOptionsMap?.[field.id]?.[col.id]?.[ridx]) || [];
+                                    const options = col.apiConfig ? apiOptions : (col.options || []);
+                                    return (
+                                      <td key={col.id}>
+                                        <select
+                                          className="border rounded px-2 py-1"
+                                          value={
+                                            typeof row?.[col.id] === "object"
+                                              ? row?.[col.id]?.id
+                                              : row?.[col.id] || ""
+                                          }
+                                          onChange={e => {
+                                            // Find the option object by ID
+                                            const selectedOpt = options.find(opt =>
+                                              (typeof opt === "object" ? opt.id : opt) === e.target.value
+                                            );
+                                            const updatedRows = (values[field.id] || []).map((r, i) =>
+                                              i === ridx ? { ...r, [col.id]: selectedOpt } : r
+                                            );
+                                            setValues(v => ({ ...v, [field.id]: updatedRows }));
+                                          }}
+                                          required={!!col.required}
+                                        >
+                                          <option value="">Select</option>
+                                          {options.map(opt =>
+                                            typeof opt === "object"
+                                              ? <option key={opt.id} value={opt.id}>{opt.label}</option>
+                                              : <option key={opt} value={opt}>{opt}</option>
+                                          )}
+                                        </select>
+                                      </td>
+                                    );
+                                  }
+
+                                  // --- Text ---
+                                  if (col.type === "text") {
+                                    return (
+                                      <td key={col.id}>
+                                        <input
+                                          className="border rounded px-2 py-1"
+                                          value={row?.[col.id] || ""}
+                                          onChange={e => {
+                                            const updatedRows = (values[field.id] || []).map((r, i) =>
+                                              i === ridx ? { ...r, [col.id]: e.target.value } : r
+                                            );
+                                            setValues(v => ({ ...v, [field.id]: updatedRows }));
+                                          }}
+                                          required={!!col.required}
+                                        />
+                                      </td>
+                                    );
+                                  }
+
+                                  // --- Fallback: empty cell ---
+                                  return <td key={col.id}></td>;
+                                })}
+                                {/* Row delete button */}
+                                <td>
+                                  <button
+                                    className="text-red-600 px-2"
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedRows = (values[field.id] || []).filter((_, i) => i !== ridx);
+                                      setValues(v => ({ ...v, [field.id]: updatedRows }));
+                                    }}
+                                  >×</button>
+                                </td>
+                              </tr>
+                            ))}
+                            {/* Add row button */}
+                            <tr>
+                              <td colSpan={(field.columns?.length || 0) + 1}>
+                                <button
+                                  className="bg-green-500 text-white px-3 py-1 rounded"
+                                  type="button"
+                                  onClick={() => {
+                                    setValues(v => ({
+                                      ...v,
+                                      [field.id]: [...(v[field.id] || []), {}]
+                                    }));
+                                  }}
+                                >+ Add Row</button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+
 
 
                     {field.description && (

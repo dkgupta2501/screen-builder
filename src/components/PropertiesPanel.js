@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { FaFont, FaCheck, FaList, FaDotCircle, FaCloud, FaLink, FaTrash, FaMagic, FaCheckSquare } from "react-icons/fa";
+import { FaFont, FaCheck, FaList, FaDotCircle, FaCloud, FaLink, FaTrash, FaMagic, FaCheckSquare, FaRegCopy, FaPlus, FaKey } from "react-icons/fa";
+import { MdDelete, MdAdd, MdContentCopy } from "react-icons/md";
 
 // --- Helpers ---
 
@@ -83,6 +84,413 @@ function Card({ icon, title, children, tooltip, className }) {
       </header>
       {children}
     </section>
+  );
+}
+
+
+function EnhancedColumnsCard({ field, updateField, uuidv4 }) {
+  const [copiedColId, setCopiedColId] = useState(null);
+
+  // For better scroll UX
+  return (
+    <Card icon={<FaList />} title="Table Columns">
+      <div className="mb-4">
+        {/* Add Column Icon Button */}
+        <button
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center mb-3 shadow"
+          title="Add Column"
+          type="button"
+          onClick={() =>
+            updateField({
+              columns: [
+                ...(field.columns || []),
+                {
+                  id: uuidv4(),
+                  label: `Column ${(field.columns?.length || 0) + 1}`,
+                  type: "text",
+                  required: false,
+                  options: [],
+                  optionSource: "static",
+                  apiConfig: null,
+                },
+              ],
+            })
+          }
+        >
+          <MdAdd size={24} />
+        </button>
+
+        <div className="space-y-4 overflow-auto max-h-[340px] min-h-[120px] pr-1">
+          {(field.columns || []).map((col, idx) => (
+            <div
+              key={col.id}
+              className="rounded-2xl border bg-white shadow-sm transition hover:shadow-md mb-1"
+            >
+              <details open className="group">
+                <summary className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-t-2xl font-semibold hover:bg-blue-100 cursor-pointer select-none">
+                  <FaFont className="text-blue-400" />
+                  <span className="truncate max-w-[100px]">{col.label || `Column ${idx + 1}`}</span>
+                  <span className="ml-2 px-2 py-0.5 bg-gray-200 rounded text-xs uppercase tracking-wide">
+                    {col.type}
+                  </span>
+                  {/* Copy Column ID Button */}
+                  <button
+                    type="button"
+                    className="ml-2 text-blue-500 hover:bg-blue-200 hover:text-blue-700 rounded-full w-8 h-8 flex items-center justify-center transition"
+                    title="Copy Column ID"
+                    onClick={e => {
+                      e.preventDefault();
+                      navigator.clipboard.writeText(col.id);
+                      setCopiedColId(col.id);
+                      setTimeout(() => setCopiedColId(null), 1200);
+                    }}
+                  >
+                    <MdContentCopy size={18} />
+                  </button>
+                  {copiedColId === col.id && (
+                    <span className="text-xs text-green-600 ml-1 animate-pulse">Copied!</span>
+                  )}
+                  {/* Remove Column Icon */}
+                  <button
+                    className="ml-auto text-red-500 hover:bg-red-100 rounded-full w-8 h-8 flex items-center justify-center transition"
+                    title="Delete Column"
+                    type="button"
+                    onClick={e => {
+                      e.preventDefault();
+                      updateField({
+                        columns: (field.columns || []).filter((_, i) => i !== idx)
+                      });
+                    }}
+                  >
+                    <MdDelete size={20} />
+                  </button>
+                </summary>
+                <div className="p-4 flex flex-col gap-3">
+                  {/* Form Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Label */}
+                    <div>
+                      <label className="block text-xs text-gray-600 font-semibold mb-1">
+                        Label
+                      </label>
+                      <input
+                        className="border rounded-lg px-3 py-1 w-full text-base focus:ring-2 focus:ring-blue-200"
+                        style={{ maxWidth: 280 }}
+                        value={col.label}
+                        onChange={e => updateField({
+                          columns: (field.columns || []).map((c, i) => i === idx ? { ...c, label: e.target.value } : c)
+                        })}
+                        placeholder={`Column ${idx + 1}`}
+                      />
+                    </div>
+                    {/* Type */}
+                    <div>
+                      <label className="block text-xs text-gray-600 font-semibold mb-1">
+                        Type
+                      </label>
+                      <select
+                        className="border rounded-lg px-3 py-1 w-full text-base bg-white"
+                        value={col.type}
+                        onChange={e => updateField({
+                          columns: (field.columns || []).map((c, i) => i === idx ? { ...c, type: e.target.value } : c)
+                        })}
+                      >
+                        <option value="text">Text</option>
+                        <option value="dropdown">Dropdown</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Dropdown Config */}
+                  {col.type === "dropdown" && (
+                    <div className="pt-2 border-t flex flex-col gap-2">
+                      <label className="text-xs text-gray-700 font-semibold">
+                        Options Source
+                      </label>
+                      <select
+                        className="border rounded px-2 py-1 w-full mb-1"
+                        value={col.optionSource || "static"}
+                        onChange={e => updateField({
+                          columns: (field.columns || []).map((c, i) =>
+                            i === idx
+                              ? {
+                                ...c,
+                                optionSource: e.target.value,
+                                apiConfig: e.target.value === "api"
+                                  ? { url: "", method: "GET", params: {}, mapOptions: { idKey: "", labelKey: "" }, responsePath: "" }
+                                  : null
+                              }
+                              : c
+                          )
+                        })}
+                      >
+                        <option value="static">Manual (Static List)</option>
+                        <option value="api">Dynamic (API)</option>
+                      </select>
+                      {col.optionSource === "static" && (
+                        <div>
+                          <div className="flex gap-1 mb-1">
+                            <input
+                              className="border rounded px-2 py-1 flex-1"
+                              placeholder="Add option"
+                              value={col._optionDraft || ""}
+                              onChange={e => updateField({
+                                columns: (field.columns || []).map((c, i) =>
+                                  i === idx ? { ...c, _optionDraft: e.target.value } : c
+                                )
+                              })}
+                              onKeyDown={e => {
+                                if (e.key === "Enter" && col._optionDraft?.trim()) {
+                                  updateField({
+                                    columns: (field.columns || []).map((c, i) =>
+                                      i === idx
+                                        ? {
+                                          ...c,
+                                          options: [...(c.options || []), col._optionDraft.trim()],
+                                          _optionDraft: ""
+                                        }
+                                        : c
+                                    )
+                                  });
+                                }
+                              }}
+                            />
+                            <button
+                              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                              type="button"
+                              title="Add Option"
+                              onClick={() => {
+                                if (col._optionDraft?.trim()) {
+                                  updateField({
+                                    columns: (field.columns || []).map((c, i) =>
+                                      i === idx
+                                        ? {
+                                          ...c,
+                                          options: [...(c.options || []), col._optionDraft.trim()],
+                                          _optionDraft: ""
+                                        }
+                                        : c
+                                    )
+                                  });
+                                }
+                              }}
+                            >
+                              <FaPlus size={14} />
+                            </button>
+                          </div>
+                          <div className="flex gap-1 flex-wrap mt-1">
+                            {(col.options || []).map((opt, oidx) => (
+                              <span key={oidx} className="px-3 py-1 rounded-full bg-gray-100 border border-gray-300 text-xs flex items-center gap-1">
+                                {opt}
+                                <button
+                                  className="ml-1 text-red-400 hover:text-red-600 rounded-full w-6 h-6 flex items-center justify-center"
+                                  type="button"
+                                  title="Remove Option"
+                                  onClick={() => updateField({
+                                    columns: (field.columns || []).map((c, i) =>
+                                      i === idx
+                                        ? {
+                                          ...c,
+                                          options: c.options.filter((_, oi) => oi !== oidx)
+                                        }
+                                        : c
+                                    )
+                                  })}
+                                >×</button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* --- API Source --- */}
+                      {col.optionSource === "api" && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t pt-3">
+                          <div className="flex flex-col">
+                            <label className="text-xs font-semibold text-gray-700 mb-1">API URL</label>
+                            <input
+                              className="border rounded px-2 py-1 w-full"
+                              placeholder="API URL"
+                              value={col.apiConfig?.url || ""}
+                              onChange={e =>
+                                updateField({
+                                  columns: (field.columns || []).map((c, i) =>
+                                    i === idx ? { ...c, apiConfig: { ...c.apiConfig, url: e.target.value } } : c
+                                  )
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="text-xs font-semibold text-gray-700 mb-1">Method</label>
+                            <select
+                              className="border rounded px-2 py-1 w-full"
+                              value={col.apiConfig?.method || "GET"}
+                              onChange={e =>
+                                updateField({
+                                  columns: (field.columns || []).map((c, i) =>
+                                    i === idx ? { ...c, apiConfig: { ...c.apiConfig, method: e.target.value } } : c
+                                  )
+                                })
+                              }
+                            >
+                              <option value="GET">GET</option>
+                              <option value="POST">POST</option>
+                            </select>
+                          </div>
+                          <div className="flex flex-col col-span-2">
+                            <label className="text-xs font-semibold text-gray-700 mb-1">Params (JSON)</label>
+                            <textarea
+                              className="border rounded px-2 py-1 text-xs w-full"
+                              placeholder='Params (JSON, use ${otherColId})'
+                              value={JSON.stringify(col.apiConfig?.params || {}, null, 2)}
+                              onChange={e => {
+                                let val = {};
+                                try { val = JSON.parse(e.target.value); } catch { }
+                                updateField({
+                                  columns: (field.columns || []).map((c, i) =>
+                                    i === idx ? { ...c, apiConfig: { ...c.apiConfig, params: val } } : c
+                                  )
+                                });
+                              }}
+                              rows={2}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="text-xs font-semibold text-gray-700 mb-1">ID Key</label>
+                            <input
+                              className="border rounded px-2 py-1"
+                              placeholder="ID Key"
+                              value={col.apiConfig?.mapOptions?.idKey || ""}
+                              onChange={e =>
+                                updateField({
+                                  columns: (field.columns || []).map((c, i) =>
+                                    i === idx
+                                      ? {
+                                        ...c,
+                                        apiConfig: { ...c.apiConfig, mapOptions: { ...c.apiConfig.mapOptions, idKey: e.target.value } }
+                                      }
+                                      : c
+                                  )
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="text-xs font-semibold text-gray-700 mb-1">Label Key</label>
+                            <input
+                              className="border rounded px-2 py-1"
+                              placeholder="Label Key"
+                              value={col.apiConfig?.mapOptions?.labelKey || ""}
+                              onChange={e =>
+                                updateField({
+                                  columns: (field.columns || []).map((c, i) =>
+                                    i === idx
+                                      ? {
+                                        ...c,
+                                        apiConfig: { ...c.apiConfig, mapOptions: { ...c.apiConfig.mapOptions, labelKey: e.target.value } }
+                                      }
+                                      : c
+                                  )
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="flex flex-col col-span-2">
+                            <label className="text-xs font-semibold text-gray-700 mb-1">Response Path (e.g. data.items)</label>
+                            <input
+                              className="border rounded px-2 py-1 w-full"
+                              placeholder="Response Path"
+                              value={col.apiConfig?.responsePath || ""}
+                              onChange={e =>
+                                updateField({
+                                  columns: (field.columns || []).map((c, i) =>
+                                    i === idx ? { ...c, apiConfig: { ...c.apiConfig, responsePath: e.target.value } } : c
+                                  )
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <button
+                              className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2 mt-2 self-start"
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  let realParams = {};
+                                  Object.entries(col.apiConfig?.params || {}).forEach(([key, val]) => {
+                                    if (typeof val === "string" && val.match(/^\$\{[^\}]+\}$/)) {
+                                      realParams[key] = "";
+                                    } else {
+                                      realParams[key] = val;
+                                    }
+                                  });
+                                  let response;
+                                  if (col.apiConfig.method === "POST") {
+                                    response = await fetch(col.apiConfig.url, {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify(realParams)
+                                    });
+                                  } else {
+                                    const qStr = new URLSearchParams(realParams).toString();
+                                    response = await fetch(qStr ? `${col.apiConfig.url}?${qStr}` : col.apiConfig.url);
+                                  }
+                                  const json = await response.json();
+                                  let items = json;
+                                  if (col.apiConfig.responsePath) {
+                                    for (const seg of col.apiConfig.responsePath.split(".")) {
+                                      items = items?.[seg];
+                                    }
+                                  }
+                                  let options = [];
+                                  const { idKey, labelKey } = col.apiConfig.mapOptions || {};
+                                  if (idKey && labelKey && Array.isArray(items)) {
+                                    options = items.map(item => ({
+                                      id: item[idKey],
+                                      label: item[labelKey],
+                                      ...item
+                                    }));
+                                  } else if (labelKey && Array.isArray(items)) {
+                                    options = items.map(item => ({
+                                      id: item[labelKey],
+                                      label: item[labelKey],
+                                      ...item
+                                    }));
+                                  } else if (idKey && Array.isArray(items)) {
+                                    options = items.map(item => ({
+                                      id: item[idKey],
+                                      label: item[idKey],
+                                      ...item
+                                    }));
+                                  } else if (Array.isArray(items) && typeof items[0] === "string") {
+                                    options = items.map(str => ({ id: str, label: str }));
+                                  }
+                                  updateField({
+                                    columns: (field.columns || []).map((c, i) =>
+                                      i === idx ? { ...c, options, apiConfig: { ...c.apiConfig } } : c
+                                    )
+                                  });
+                                  alert("API fetch success: " + JSON.stringify(options));
+                                } catch (err) {
+                                  alert("API fetch failed");
+                                }
+                              }}
+                            >
+                              Save & Fetch Options
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </details>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -348,6 +756,21 @@ export default function PropertiesPanel({
           />
         </div>
       </Card>
+
+
+      {field.type === 'table' && (
+
+
+
+        <EnhancedColumnsCard
+          field={field}
+          updateField={updateField} // Your updateField function for updating the table field
+          uuidv4={uuidv4}           // Your UUID function (import from uuid or use crypto.randomUUID)
+        />
+
+      )}
+
+
 
       {/* VALIDATION */}
       {(["text", "dropdown", "date", "checkbox", "switch", "textarea"].includes(field.type)) && (

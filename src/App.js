@@ -49,30 +49,63 @@ export default function App() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="h-screen w-screen bg-gradient-to-br from-gray-50 to-gray-200 flex flex-col">
-        <header className="py-4 px-8 shadow bg-white flex items-center justify-between">
-          <h2 className="text-3xl font-extrabold text-gray-800 flex items-center gap-3">
-            <span>🧩</span> Dynamic Form Builder
-            {isLocked && (
-              <span className="ml-4 flex items-center gap-1 text-blue-600 text-sm font-bold bg-blue-50 border border-blue-200 px-2 py-1 rounded">
-                <Lock className="w-4 h-4" /> Published
+        <header className="py-2 px-8 shadow bg-white flex flex-col">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-bold text-[#e31837] flex items-center gap-2">
+                🧩 Dynamic Form Builder
               </span>
-            )}
-            {!isLocked && draftFields && (
-              <span className="ml-4 flex items-center gap-1 text-amber-700 text-sm font-bold bg-amber-50 border border-amber-200 px-2 py-1 rounded">
-                <Save className="w-4 h-4" /> Draft Saved
-                <button
-                  className="ml-2 underline text-xs text-amber-900"
-                  onClick={handleRestoreDraft}
-                >
-                  Restore
-                </button>
-              </span>
-            )}
-          </h2>
-          <span className="hidden md:inline-block text-gray-400 text-xs">
-            (Drag widgets from the left. Edit properties at right. Set dependencies easily.)
-          </span>
+              <div className="flex items-center gap-2">
+                {isLocked && (
+                  <span className="ml-3 inline-flex items-center gap-2 text-xs font-bold uppercase rounded-2xl px-4 py-1.5 shadow"
+                    style={{
+                      background: "#e31837",
+                      color: "#fff",
+                      letterSpacing: "1px",
+                      boxShadow: "0 2px 8px 0 rgba(227,24,55,0.09)"
+                    }}>
+                    <Lock className="w-4 h-4 mr-1" />
+                    Published
+                  </span>
+                )}
+                {!isLocked && draftFields && (
+                  <span className="ml-3 inline-flex items-center gap-2 text-xs font-bold uppercase rounded-2xl px-4 py-1.5 shadow border"
+                    style={{
+                      borderColor: "#e31837",
+                      background: "#fff",
+                      color: "#e31837",
+                      letterSpacing: "1px",
+                      boxShadow: "0 2px 8px 0 rgba(227,24,55,0.08)"
+                    }}>
+                    <Save className="w-4 h-4 mr-1" />
+                    Draft Saved
+                    <button
+                      className="ml-3 px-2 py-1 rounded-full font-bold text-xs uppercase"
+                      style={{
+                        background: "#e31837",
+                        color: "#fff",
+                        border: "none",
+                        boxShadow: "0 1px 3px 0 rgba(227,24,55,0.08)",
+                        transition: "background 0.2s"
+                      }}
+                      onClick={handleRestoreDraft}
+                    >
+                      Restore
+                    </button>
+                  </span>
+                )}
+              </div>
+
+            </div>
+            <span className="hidden md:inline-block text-gray-400 text-xs font-medium">
+              (Drag widgets from the left. Edit properties at right. Set dependencies easily.)
+            </span>
+          </div>
+          <div className="w-full border-b-2 border-[#e31837] mt-2" />
         </header>
+
+
+
         <main className="flex-1 flex gap-6 px-6 py-8 overflow-hidden">
           {/* Left Sidebar */}
           {!isLocked && (
@@ -131,9 +164,9 @@ export default function App() {
             </div>
             <FormBuilder
               fields={isLocked ? publishedFields : fields}
-              setFields={isLocked ? () => {} : setFields}
+              setFields={isLocked ? () => { } : setFields}
               selectedFieldId={selectedFieldId}
-              setSelectedFieldId={isLocked ? () => {} : setSelectedFieldId}
+              setSelectedFieldId={isLocked ? () => { } : setSelectedFieldId}
               previewMode={false}
             />
 
