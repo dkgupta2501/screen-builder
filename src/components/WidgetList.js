@@ -53,21 +53,32 @@ function WidgetItem({ type, label, icon }) {
     <div
       ref={drag}
       className={`
-        flex items-center gap-3 px-4 py-2 rounded-lg cursor-move select-none
-        bg-white border border-[#d9d9d9]
-        text-base font-medium transition
-        hover:bg-[#f5f6fa] hover:border-[#e31837] active:bg-[#fde8ed]
-        ${isDragging ? 'opacity-30' : ''}
+        flex items-center gap-3 px-4 py-2 rounded-xl cursor-move select-none
+        transition-all duration-200
+        ${isDragging
+          ? 'border-2 border-[#e31837] bg-[#fff1f3] shadow-xl scale-105 z-50'
+          : 'bg-white border border-[#d9d9d9] hover:bg-[#f5f6fa] hover:border-[#e31837] active:bg-[#fde8ed]'
+        }
       `}
-      style={{ minWidth: 0, fontSize: '1rem', color: ERGO_DARK }}
+      style={{
+        minWidth: 0,
+        fontSize: '1rem',
+        color: '#212121', // ERGO_DARK
+        boxShadow: isDragging
+          ? '0 8px 32px -4px #e3183733'
+          : '0 2px 8px 0 #e3e3e340',
+        borderRadius: '1rem',
+        transition: 'all 0.18s cubic-bezier(.35,1.2,.5,1)',
+      }}
       tabIndex={0}
       title={label}
     >
-      <span className="text-xl" style={{ color: ERGO_RED }}>{icon}</span>
+      <span className="text-xl" style={{ color: '#e31837' }}>{icon}</span>
       <span className="truncate">{label}</span>
     </div>
   );
 }
+
 
 export default function WidgetList() {
   return (

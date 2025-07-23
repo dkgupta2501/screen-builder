@@ -5,6 +5,27 @@ import { v4 as uuidv4 } from 'uuid';
 import DraggableField from './DraggableField';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import TextField from '@mui/material/TextField';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import MenuItem from '@mui/material/MenuItem';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import Checkbox from '@mui/material/Checkbox';
+import FormGroup from '@mui/material/FormGroup';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
+import IconButton from '@mui/material/IconButton';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import Button from '@mui/material/Button';
 
 
 function interpolateUrl(url, values) {
@@ -155,22 +176,35 @@ function SectionContainer({
   );
 
   return (
-    <div className="mb-6 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl shadow-inner">
+    <div className={`mb-6 rounded-2xl shadow-md border-2
+  ${selectedFieldId === section.id
+        ? 'border-[#e31837] bg-gradient-to-br from-[#fff1f3] to-[#f5f6fa]'
+        : 'border-[#e3e3e3] bg-white'
+      }`}
+    >
+
       <div
-        className={`p-4 flex items-center justify-between cursor-pointer select-none ${selectedFieldId === section.id
-          ? 'border-blue-600 border-l-4 bg-blue-100'
-          : ''
-          }`}
+        className={`
+    p-4 flex items-center justify-between cursor-pointer select-none rounded-t-2xl
+    transition-all
+    ${selectedFieldId === section.id
+            ? 'border-l-4 border-[#e31837] bg-[#fff1f3]'
+            : 'border-l-4 border-transparent bg-white'
+          }
+`}
         onClick={() => setSelectedFieldId(section.id)}
       >
         <div>
-          <span className="text-lg font-bold text-blue-700">{section.label || 'Untitled Section'}</span>
+          <span className="text-lg font-bold" style={{ color: '#e31837' }}>
+            {section.label || 'Untitled Section'}
+          </span>
           {section.description && (
             <span className="ml-4 text-sm text-gray-500">{section.description}</span>
           )}
         </div>
         <span className="text-xs text-gray-500">Section</span>
       </div>
+
       <div
         ref={dropField}
         className={`p-4 min-h-[60px] rounded-xl transition-all bg-white ${isOverField ? 'border-2 border-blue-400 bg-blue-50' : 'border border-gray-200'
@@ -200,11 +234,12 @@ function SectionContainer({
                       e.stopPropagation();
                       setSelectedFieldId(field.id);
                     }}
-                    className={`relative group p-4 border rounded-xl cursor-pointer bg-white shadow transition-all ${isSelected
-                      ? 'border-blue-500 ring-2 ring-blue-200'
-                      : 'border-gray-200 hover:border-blue-400'
-                      } ${!normallyVisible && !previewMode ? 'opacity-50' : ''}`}
-                    style={{ pointerEvents: 'auto' }}
+                    className={`
+                    relative group p-4 border rounded-xl cursor-pointer bg-white shadow transition-all
+                    border-gray-200
+                    ${isSelected ? 'ring-2 ring-[#e31837]' : ''}
+                    ${!normallyVisible && !previewMode ? 'opacity-50' : ''}
+                  `}
                   >
                     {/* Copy Field ID button */}
                     <button
@@ -226,30 +261,43 @@ function SectionContainer({
                         Copied!
                       </span>
                     )}
-                    <label className="block font-semibold mb-2 text-gray-700 flex items-center gap-1">
-                      {field.label}
-                      {field.required ? (
-                        <span className="text-red-500">*</span>
-                      ) : null}
-                    </label>
+
+                    {!["radio", "checkbox", "switch"].includes(field.type) && (
+                      <label className="block font-semibold mb-2 text-gray-700 flex items-center gap-1">
+                        {field.label}
+                        {field.required ? (<span className="text-red-500">*</span>) : null}
+                      </label>
+                    )}
+
+
                     {field.type === 'text' && (
-                      <input
-                        type="text"
-                        className="w-full border rounded px-3 py-2 text-base"
+                      <TextField
+                        fullWidth
+                        label={field.label}
+                        variant="outlined"
+                        size="medium"
                         placeholder={field.placeholder || 'Text input'}
                         disabled={field.disabled}
-                        readOnly={field.readOnly}
-                        minLength={field.minLength || undefined}
-                        maxLength={field.maxLength || undefined}
+                        InputProps={{
+                          readOnly: field.readOnly,
+                          style: {
+                            borderRadius: '12px',
+                            background: field.disabled ? '#f5f6fa' : '#fff',
+                          }
+                        }}
+                        inputProps={{
+                          minLength: field.minLength || undefined,
+                          maxLength: field.maxLength || undefined,
+                        }}
                         value={values[field.id] ?? ''}
                         onChange={e =>
                           setValues(v => ({ ...v, [field.id]: e.target.value }))
                         }
                         onBlur={async e => {
                           const val = e.target.value;
+                          // keep your API autofill logic here (copy from your code)
                           if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
                             const allFields = flattenFields(fields);
-                            // Use your interpolateParams helper:
                             const params = interpolateParams(field.apiConfig.params || {}, { ...values, [field.id]: val });
                             try {
                               let response;
@@ -264,17 +312,14 @@ function SectionContainer({
                                 response = await fetch(qStr ? `${field.apiConfig.url}?${qStr}` : field.apiConfig.url);
                               }
                               const json = await response.json();
-                              // Apply mapping:
                               const updates = {};
                               for (const [apiKey, targetFieldId] of Object.entries(field.apiConfig.responseMap)) {
                                 if (json[apiKey] !== undefined) {
                                   let value = json[apiKey];
-                                  // Check if the target field is a date field:
                                   const targetField = allFields.find(f => f.id === targetFieldId);
                                   if (targetField?.type === "date") {
-                                    // If it's a datetime string, extract just the date:
                                     if (typeof value === "string" && value.length >= 10) {
-                                      value = value.substring(0, 10); // Take 'YYYY-MM-DD'
+                                      value = value.substring(0, 10);
                                     }
                                   }
                                   updates[targetFieldId] = json[apiKey];
@@ -284,80 +329,174 @@ function SectionContainer({
                                 setValues(v => ({ ...v, ...updates }));
                               }
                             } catch (err) {
-                              // You can show an error toast or log error here if you want
+                              // optional: show error
                             }
                           }
                         }}
+                        sx={{
+                          mt: 0.5,
+                          mb: 0.5,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '12px',
+                            background: field.disabled ? '#f5f6fa' : '#fff',
+                            '& fieldset': {
+                              borderColor: selectedFieldId === field.id ? '#e31837' : '#d9d9d9',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: '#e31837',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#e31837',
+                              boxShadow: '0 0 0 2px #e3183744'
+                            },
+                          },
+                          '& .MuiInputLabel-root.Mui-focused': {
+                            color: '#e31837',
+                          },
+                        }}
+                        required={field.required}
+                        error={false} // You can set this to true if you have a validation error
+                        helperText={field.description || ''}
                       />
                     )}
+
 
                     {field.type === 'date' && (
-                      <input
-                        type="date"
-                        className="w-full border rounded px-3 py-2 text-base"
-                        placeholder={field.placeholder || 'Select date'}
-                        disabled={field.disabled}
-                        readOnly={field.readOnly}
-                        value={values[field.id] ?? ""}
-                        onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
-                        onBlur={async e => {
-                          const val = e.target.value;
-                          // API autofill: same as for text type
-                          if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
-                            // interpolate params, fetch, map response...
-                          }
-                        }}
-                      />
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <DatePicker
+                          label={field.label || 'Select date'}
+                          value={values[field.id] ? new Date(values[field.id]) : null}
+                          onChange={date => {
+                            // Ensure date is stored as YYYY-MM-DD string
+                            const formatted = date
+                              ? date.toISOString().substring(0, 10)
+                              : '';
+                            setValues(v => ({ ...v, [field.id]: formatted }));
+                          }}
+                          disabled={field.disabled}
+                          readOnly={field.readOnly}
+                          inputFormat="yyyy-MM-dd"
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              placeholder: field.placeholder || "Select date",
+                              variant: "outlined",
+                              size: "medium",
+                              required: field.required,
+                              error: false, // Add your validation here if needed
+                              helperText: field.description || "",
+                              sx: {
+                                mt: 0.5,
+                                mb: 0.5,
+                                '& .MuiOutlinedInput-root': {
+                                  borderRadius: '12px',
+                                  background: field.disabled ? '#f5f6fa' : '#fff',
+                                  '& fieldset': {
+                                    borderColor: selectedFieldId === field.id ? '#e31837' : '#d9d9d9',
+                                  },
+                                  '&:hover fieldset': {
+                                    borderColor: '#e31837',
+                                  },
+                                  '&.Mui-focused fieldset': {
+                                    borderColor: '#e31837',
+                                    boxShadow: '0 0 0 2px #e3183744'
+                                  },
+                                },
+                                '& .MuiInputLabel-root.Mui-focused': {
+                                  color: '#e31837',
+                                },
+                              },
+                              InputLabelProps: {
+                                sx: {
+                                  background: "#fff",
+                                  px: 0.5,
+                                }
+                              },
+                            }
+                          }}
+                          onClose={async () => {
+                            // Optional: API autofill logic on close or blur
+                            const val = values[field.id];
+                            if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                              // ... your API autofill logic as before ...
+                            }
+                          }}
+                        />
+                      </LocalizationProvider>
                     )}
 
+
                     {field.type === 'radio' && (
-                      <div className="flex gap-4">
-                        {field.apiConfig
-                          ? loadingApiOptions
-                            ? <span>Loading...</span>
-                            : apiOptions.map(opt => (
-                              <label key={opt.id} className="flex items-center gap-2 text-base">
-                                <input
-                                  type="radio"
-                                  name={field.id}
-                                  disabled={field.disabled}
-                                  checked={
-                                    typeof values[field.id] === "object"
-                                      ? values[field.id]?.id === opt.id
-                                      : values[field.id] === opt.id
-                                  }
-                                  onChange={() => setValues(v => ({ ...v, [field.id]: opt }))}
-                                />
-                                {opt.label}
-                              </label>
-                            ))
-                          : (field.options || []).map(opt => (
-                            <label
-                              key={opt.id}
-                              className="flex items-center gap-2 text-base"
-                            >
-                              <input
-                                type="radio"
-                                name={field.id}
-                                disabled={field.disabled}
-                                checked={
-                                  typeof values[field.id] === "object"
-                                    ? values[field.id]?.id === opt.id
-                                    : values[field.id] === opt.id
-                                }
-                                onChange={() => setValues(v => ({ ...v, [field.id]: opt }))}
-                              />
-                              {opt.label}
-                            </label>
-                          ))
-                        }
-                      </div>
-                    )}
-                    {field.type === 'dropdown' && (
-                      <select
+                      <FormControl
+                        component="fieldset"
+                        sx={{
+                          width: '100%',
+                          mt: 0.5,
+                          mb: 0.5,
+                          '.MuiFormLabel-root': {
+                            color: selectedFieldId === field.id ? '#e31837' : '#222',
+                            fontWeight: 600,
+                          },
+                        }}
                         disabled={field.disabled}
-                        multiple={field.allowMultiple}
-                        className="w-full border rounded px-3 py-2 text-base"
+                      >
+                        <FormLabel component="legend" sx={{
+                          '&.Mui-focused': { color: '#e31837' },
+                          background: '#fff', px: 0.5, borderRadius: '8px'
+                        }}>
+                          {field.label}
+                        </FormLabel>
+                        <RadioGroup
+                          row
+                          name={field.id}
+                          value={
+                            values[field.id]
+                              ? typeof values[field.id] === "object"
+                                ? values[field.id].id
+                                : values[field.id]
+                              : ""
+                          }
+                          onChange={e => {
+                            const selected = (field.apiConfig ? apiOptions : (field.options || [])).find(opt =>
+                              String(opt.id) === e.target.value
+                            );
+                            setValues(v => ({ ...v, [field.id]: selected }));
+                          }}
+                          sx={{
+                            mt: 1,
+                            '& .MuiRadio-root': {
+                              color: '#e31837',
+                              '&.Mui-checked': { color: '#e31837' },
+                            }
+                          }}
+                        >
+                          {(field.apiConfig ? (loadingApiOptions ? [{ id: '', label: 'Loading...' }] : apiOptions) : (field.options || [])).map(opt => (
+                            <FormControlLabel
+                              key={opt.id}
+                              value={opt.id}
+                              control={<Radio />}
+                              label={opt.label}
+                              disabled={field.disabled}
+                              sx={{
+                                mr: 3,
+                                borderRadius: '8px',
+                                background: '#fff'
+                              }}
+                            />
+                          ))}
+                        </RadioGroup>
+                      </FormControl>
+                    )}
+
+                    {field.type === 'dropdown' && (
+                      <TextField
+                        select
+                        fullWidth
+                        label={field.label}
+                        variant="outlined"
+                        size="medium"
+                        placeholder={field.placeholder || 'Select...'}
+                        disabled={field.disabled}
                         value={values[field.id] ? JSON.stringify(values[field.id]) : ""}
                         required={field.required}
                         onChange={e => {
@@ -365,101 +504,258 @@ function SectionContainer({
                           try { value = JSON.parse(value); } catch { }
                           setValues(v => ({ ...v, [field.id]: value }));
                         }}
-                        readOnly={field.readOnly}
+                        InputProps={{
+                          readOnly: field.readOnly,
+                          style: {
+                            borderRadius: '12px',
+                            background: field.disabled ? '#f5f6fa' : '#fff',
+                          }
+                        }}
+                        InputLabelProps={{
+                          sx: {
+                            background: "#fff",
+                            px: 0.5,
+                          }
+                        }}
+                        sx={{
+                          mt: 0.5,
+                          mb: 0.5,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '12px',
+                            background: field.disabled ? '#f5f6fa' : '#fff',
+                            '& fieldset': {
+                              borderColor: selectedFieldId === field.id ? '#e31837' : '#d9d9d9',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: '#e31837',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#e31837',
+                              boxShadow: '0 0 0 2px #e3183744'
+                            },
+                          },
+                          '& .MuiInputLabel-root.Mui-focused': {
+                            color: '#e31837',
+                          },
+                        }}
+                        helperText={field.description || ''}
                       >
-                        <option value="">Select...</option>
+                        <MenuItem value="">Select...</MenuItem>
                         {(field.apiConfig ? apiOptions : (field.options || [])).map(opt => (
-                          <option key={opt.id} value={JSON.stringify(opt)}>
+                          <MenuItem key={opt.id} value={JSON.stringify(opt)}>
                             {opt.year && opt.value ? `${opt.year} - ${opt.value}` : opt.label}
-                          </option>
+                          </MenuItem>
                         ))}
-                      </select>
+                      </TextField>
                     )}
+
 
 
                     {field.type === 'checkbox' && (
-                      <div className="flex flex-col gap-2">
-                        {(field.options || []).length === 0 ? (
-                          <span className="text-xs text-gray-400">No options configured.</span>
-                        ) : (
-                          (field.options || []).map(opt => (
-                            <label key={opt.id} className="flex items-center gap-2 text-base">
-                              <input
-                                type="checkbox"
-                                disabled={field.disabled}
-                                checked={Array.isArray(values[field.id]) ? values[field.id].some(o => o.id === opt.id) : false}
-                                onChange={e => {
-                                  setValues(v => {
-                                    const current = Array.isArray(v[field.id]) ? [...v[field.id]] : [];
-                                    if (e.target.checked) {
-                                      return { ...v, [field.id]: [...current, opt] };
-                                    } else {
-                                      return { ...v, [field.id]: current.filter(o => o.id !== opt.id) };
-                                    }
-                                  });
-                                }}
+                      <FormControl
+                        component="fieldset"
+                        sx={{
+                          width: '100%',
+                          mt: 0.5,
+                          mb: 0.5,
+                          '.MuiFormLabel-root': {
+                            color: selectedFieldId === field.id ? '#e31837' : '#222',
+                            fontWeight: 600,
+                          },
+                        }}
+                        disabled={field.disabled}
+                      >
+                        <FormLabel component="legend" sx={{
+                          '&.Mui-focused': { color: '#e31837' },
+                          background: '#fff', px: 0.5, borderRadius: '8px'
+                        }}>
+                          {field.label}
+                        </FormLabel>
+                        <FormGroup row>
+                          {(field.apiConfig ? apiOptions : (field.options || [])).length === 0 ? (
+                            <span className="text-xs text-gray-400 ml-2">No options configured.</span>
+                          ) : (
+                            (field.apiConfig ? apiOptions : (field.options || [])).map(opt => (
+                              <FormControlLabel
+                                key={opt.id}
+                                control={
+                                  <Checkbox
+                                    checked={Array.isArray(values[field.id]) ? values[field.id].some(o => o.id === opt.id) : false}
+                                    onChange={e => {
+                                      setValues(v => {
+                                        const current = Array.isArray(v[field.id]) ? [...v[field.id]] : [];
+                                        if (e.target.checked) {
+                                          return { ...v, [field.id]: [...current, opt] };
+                                        } else {
+                                          return { ...v, [field.id]: current.filter(o => o.id !== opt.id) };
+                                        }
+                                      });
+                                    }}
+                                    disabled={field.disabled}
+                                    sx={{
+                                      color: '#e31837',
+                                      '&.Mui-checked': { color: '#e31837' }
+                                    }}
+                                  />
+                                }
+                                label={opt.label}
+                                sx={{ mr: 3, borderRadius: '8px', background: '#fff' }}
                               />
-                              {opt.label}
-                            </label>
-                          ))
-                        )}
-                      </div>
+                            ))
+                          )}
+                        </FormGroup>
+                      </FormControl>
                     )}
 
+
                     {field.type === 'textarea' && (
-                      <textarea
-                        className="w-full border rounded px-3 py-2 text-base"
-                        rows={field.rows || 4}
+                      <TextField
+                        fullWidth
+                        label={field.label}
+                        multiline
+                        minRows={field.rows || 4}
+                        maxRows={field.maxRows || 10}
                         placeholder={field.placeholder || 'Enter text'}
                         disabled={field.disabled}
-                        readOnly={field.readOnly}
-                        minLength={field.minLength || undefined}
-                        maxLength={field.maxLength || undefined}
-                        required={field.required}
+                        InputProps={{
+                          readOnly: field.readOnly,
+                          style: {
+                            borderRadius: '12px',
+                            background: field.disabled ? '#f5f6fa' : '#fff',
+                          }
+                        }}
+                        InputLabelProps={{
+                          sx: {
+                            background: "#fff",
+                            px: 0.5,
+                          }
+                        }}
+                        inputProps={{
+                          minLength: field.minLength || undefined,
+                          maxLength: field.maxLength || undefined,
+                        }}
                         value={values[field.id] ?? ''}
                         onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
                         onBlur={async e => {
                           const val = e.target.value;
-                          // API autofill logic (copy same as text input)
+                          // API autofill logic...
                           if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
-                            // ...API autofill logic here...
+                            // ... your API autofill logic from before ...
                           }
                         }}
+                        sx={{
+                          mt: 0.5,
+                          mb: 0.5,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '12px',
+                            background: field.disabled ? '#f5f6fa' : '#fff',
+                            '& fieldset': {
+                              borderColor: selectedFieldId === field.id ? '#e31837' : '#d9d9d9',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: '#e31837',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#e31837',
+                              boxShadow: '0 0 0 2px #e3183744'
+                            },
+                          },
+                          '& .MuiInputLabel-root.Mui-focused': {
+                            color: '#e31837',
+                          },
+                        }}
+                        required={field.required}
+                        error={false}
+                        helperText={field.description || ''}
                       />
                     )}
 
 
                     {field.type === 'switch' && (
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={!!values[field.id]}
-                            onChange={e => setValues(v => ({ ...v, [field.id]: e.target.checked }))}
-                            disabled={field.disabled}
-                            inputProps={{ 'aria-label': field.label }}
-                          />
-                        }
-                        label={<span className="text-base text-gray-700">{field.label}</span>}
-                        sx={{ ml: 0 }} // removes default left margin
-                      />
+                      <FormControl
+                        component="fieldset"
+                        sx={{
+                          width: '100%',
+                          mt: 0.5,
+                          mb: 0.5,
+                          '.MuiFormLabel-root': {
+                            color: selectedFieldId === field.id ? '#e31837' : '#222',
+                            fontWeight: 600,
+                          },
+                        }}
+                        disabled={field.disabled}
+                      >
+                        <FormLabel
+                          component="legend"
+                          sx={{
+                            '&.Mui-focused': { color: '#e31837' },
+                            background: '#fff',
+                            px: 0.5,
+                            borderRadius: '8px'
+                          }}
+                        >
+                          {field.label}
+                        </FormLabel>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={!!values[field.id]}
+                              onChange={e => setValues(v => ({ ...v, [field.id]: e.target.checked }))}
+                              disabled={field.disabled}
+                              sx={{
+                                color: '#e31837',
+                                '&.Mui-checked': { color: '#e31837' },
+                                '& .MuiSwitch-thumb': { backgroundColor: '#e31837' },
+                                '& .MuiSwitch-track': {
+                                  backgroundColor: !!values[field.id] ? '#e31837' : '#d9d9d9',
+                                  opacity: 1,
+                                },
+                              }}
+                              inputProps={{ 'aria-label': field.label }}
+                            />
+                          }
+                          label={!!field.description ? field.description : ""}
+                          sx={{ ml: 1 }}
+                        />
+                      </FormControl>
                     )}
 
+
                     {field.type === "table" && (
-                      <div className="overflow-x-auto mt-2 mb-3">
-                        <table className="min-w-full border rounded">
-                          <thead>
-                            <tr>
+                      <TableContainer
+                        component={Paper}
+                        elevation={2}
+                        sx={{
+                          mt: 2, mb: 2, borderRadius: 3,
+                          boxShadow: '0 2px 8px 0 #e3183722',
+                          border: `1.5px solid ${selectedFieldId === field.id ? '#e31837' : '#e3e3e3'}`
+                        }}
+                      >
+                        <Table size="small" aria-label={field.label}>
+                          <TableHead>
+                            <TableRow>
                               {(field.columns || []).map(col => (
-                                <th key={col.id} className="px-2 py-1 border-b text-left">{col.label}</th>
+                                <TableCell
+                                  key={col.id}
+                                  sx={{
+                                    fontWeight: 700,
+                                    color: '#e31837',
+                                    background: '#fff1f3',
+                                    borderBottom: `2px solid #e31837`,
+                                    fontSize: 15,
+                                  }}
+                                >
+                                  {col.label}
+                                </TableCell>
                               ))}
-                              <th></th>
-                            </tr>
-                          </thead>
-                          <tbody>
+                              <TableCell />
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
                             {(values[field.id] || []).map((row, ridx) => (
-                              <tr key={ridx}>
+                              <TableRow key={ridx} hover>
                                 {(field.columns || []).map(col => {
-                                  // --- Per-column dependency check ---
+                                  // Dependency logic for cell rendering
                                   let showCell = true;
                                   if (col.dependency) {
                                     const depVal = col.dependency.value;
@@ -475,24 +771,24 @@ function SectionContainer({
                                       showCell = rowDepVal === depVal;
                                     }
                                   }
-                                  if (!showCell) return <td key={col.id}></td>;
+                                  if (!showCell) return <TableCell key={col.id} />;
 
-                                  // --- Dropdown (API or static) ---
+                                  // Dropdown column (API/static)
                                   if (col.type === "dropdown") {
-                                    // Always use API options if present, else fallback to static
                                     const apiOptions = (apiOptionsMap?.[field.id]?.[col.id]?.[ridx]) || [];
                                     const options = col.apiConfig ? apiOptions : (col.options || []);
                                     return (
-                                      <td key={col.id}>
-                                        <select
-                                          className="border rounded px-2 py-1"
+                                      <TableCell key={col.id}>
+                                        <TextField
+                                          select
+                                          fullWidth
+                                          size="small"
                                           value={
                                             typeof row?.[col.id] === "object"
                                               ? row?.[col.id]?.id
                                               : row?.[col.id] || ""
                                           }
                                           onChange={e => {
-                                            // Find the option object by ID
                                             const selectedOpt = options.find(opt =>
                                               (typeof opt === "object" ? opt.id : opt) === e.target.value
                                             );
@@ -501,25 +797,40 @@ function SectionContainer({
                                             );
                                             setValues(v => ({ ...v, [field.id]: updatedRows }));
                                           }}
-                                          required={!!col.required}
+                                          sx={{
+                                            minWidth: 120,
+                                            background: '#fff',
+                                            '& .MuiOutlinedInput-root': {
+                                              borderRadius: 2,
+                                              '& fieldset': {
+                                                borderColor: '#e31837'
+                                              },
+                                              '&:hover fieldset': {
+                                                borderColor: '#e31837'
+                                              },
+                                              '&.Mui-focused fieldset': {
+                                                borderColor: '#e31837',
+                                                boxShadow: '0 0 0 2px #e3183722'
+                                              }
+                                            }
+                                          }}
                                         >
-                                          <option value="">Select</option>
+                                          <MenuItem value="">Select</MenuItem>
                                           {options.map(opt =>
                                             typeof opt === "object"
-                                              ? <option key={opt.id} value={opt.id}>{opt.label}</option>
-                                              : <option key={opt} value={opt}>{opt}</option>
+                                              ? <MenuItem key={opt.id} value={opt.id}>{opt.label}</MenuItem>
+                                              : <MenuItem key={opt} value={opt}>{opt}</MenuItem>
                                           )}
-                                        </select>
-                                      </td>
+                                        </TextField>
+                                      </TableCell>
                                     );
                                   }
-
-                                  // --- Text ---
+                                  // Text column
                                   if (col.type === "text") {
                                     return (
-                                      <td key={col.id}>
-                                        <input
-                                          className="border rounded px-2 py-1"
+                                      <TableCell key={col.id}>
+                                        <TextField
+                                          size="small"
                                           value={row?.[col.id] || ""}
                                           onChange={e => {
                                             const updatedRows = (values[field.id] || []).map((r, i) =>
@@ -527,48 +838,84 @@ function SectionContainer({
                                             );
                                             setValues(v => ({ ...v, [field.id]: updatedRows }));
                                           }}
-                                          required={!!col.required}
+                                          sx={{
+                                            background: '#fff',
+                                            borderRadius: 2,
+                                            '& .MuiOutlinedInput-root': {
+                                              borderRadius: 2,
+                                              '& fieldset': {
+                                                borderColor: '#e31837'
+                                              },
+                                              '&:hover fieldset': {
+                                                borderColor: '#e31837'
+                                              },
+                                              '&.Mui-focused fieldset': {
+                                                borderColor: '#e31837',
+                                                boxShadow: '0 0 0 2px #e3183722'
+                                              }
+                                            }
+                                          }}
                                         />
-                                      </td>
+                                      </TableCell>
                                     );
                                   }
-
-
-                                  // --- Fallback: empty cell ---
-                                  return <td key={col.id}></td>;
+                                  // Fallback: empty
+                                  return <TableCell key={col.id} />;
                                 })}
-                                {/* Row delete button */}
-                                <td>
-                                  <button
-                                    className="text-red-600 px-2"
-                                    type="button"
+                                <TableCell>
+                                  <IconButton
+                                    color="error"
+                                    size="small"
                                     onClick={() => {
                                       const updatedRows = (values[field.id] || []).filter((_, i) => i !== ridx);
                                       setValues(v => ({ ...v, [field.id]: updatedRows }));
                                     }}
-                                  >×</button>
-                                </td>
-                              </tr>
+                                    sx={{
+                                      color: '#e31837',
+                                      '&:hover': { background: '#fff1f3' }
+                                    }}
+                                  >
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </TableCell>
+                              </TableRow>
                             ))}
                             {/* Add row button */}
-                            <tr>
-                              <td colSpan={(field.columns?.length || 0) + 1}>
-                                <button
-                                  className="bg-green-500 text-white px-3 py-1 rounded"
-                                  type="button"
+                            <TableRow>
+                              <TableCell colSpan={(field.columns?.length || 0) + 1} align="left">
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  startIcon={<AddIcon />}
+                                  sx={{
+                                    background: '#e31837',
+                                    color: '#fff',
+                                    borderRadius: 2,
+                                    px: 2,
+                                    py: 0.5,
+                                    fontWeight: 500,
+                                    fontSize: 14,
+                                    minWidth: 0,
+                                    textTransform: 'none',
+                                    boxShadow: 'none',
+                                    '&:hover': { background: '#c31530' }
+                                  }}
                                   onClick={() => {
                                     setValues(v => ({
                                       ...v,
                                       [field.id]: [...(v[field.id] || []), {}]
                                     }));
                                   }}
-                                >+ Add Row</button>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                                >
+                                  Add Row
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
                     )}
+
 
                     {field.description && (
                       <div className="mt-2 text-xs text-gray-500">
@@ -887,10 +1234,20 @@ export default function FormBuilder({
   return (
     <div
       ref={drop}
-      className={`flex-1 min-h-[400px] flex flex-col items-center justify-start border-4 border-dashed rounded-2xl shadow-inner transition bg-gradient-to-br ${isOver
-        ? 'border-blue-400 from-blue-50 to-blue-100'
-        : 'border-gray-200 from-white to-gray-50'
-        }`}
+      className={`
+      flex-1 min-h-[400px] flex flex-col items-center justify-start
+      border-4 rounded-2xl shadow-2xl
+      bg-gradient-to-br
+      transition-all
+      ${isOver
+          ? 'border-[#e31837] from-[#fff1f3] to-[#f5f6fa]'
+          : 'border-[#e3e3e3] from-[#f5f6fa] to-[#fff]'
+        }
+    `}
+      style={{
+        fontFamily: 'Inter, Roboto, Helvetica, Arial, sans-serif',
+        fontSize: 17,
+      }}
     >
       {fields.length === 0 ? (
         <p className="text-gray-400 text-lg text-center mt-16">

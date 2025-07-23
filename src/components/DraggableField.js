@@ -29,8 +29,20 @@ export default function DraggableField({ id, index, moveField, children }) {
   return (
     <div
       ref={ref}
-      className={`transition-all ${isDragging ? "opacity-30" : ""}`}
-      style={{ cursor: "move" }}
+      className={`
+    transition-all
+    ${isDragging
+          ? "border-2 border-[#e31837] bg-[#fff1f3] shadow-xl scale-95 z-50"
+          : "border border-transparent"
+        }
+  `}
+      style={{
+        cursor: "move",
+        pointerEvents: "auto",
+        borderRadius: "1rem",
+        boxShadow: isDragging ? "0 6px 36px -8px #e3183715" : "0 1px 8px 0 #e3e3e340",
+        transition: "all 0.18s cubic-bezier(.35,1.2,.5,1)",
+      }}
     >
       {children}
     </div>
