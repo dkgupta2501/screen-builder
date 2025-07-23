@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import TextField from "@mui/material/TextField";
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import MenuItem from "@mui/material/MenuItem";
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import FormHelperText from '@mui/material/FormHelperText';
+import Checkbox from '@mui/material/Checkbox';
+import FormGroup from '@mui/material/FormGroup';
+import IconButton from "@mui/material/IconButton";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+
 
 
 function interpolateUrl(url, values) {
@@ -398,183 +414,372 @@ export default function PreviewForm({ fields }) {
       return (
         <div
           key={section.id}
-          className="mb-8 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl shadow-inner"
+          style={{
+            marginBottom: 48,
+            width: "100%",                 // Fill parent container
+            background: "#fff",
+            borderRadius: 10,
+            boxShadow: "0 4px 24px 0 #e3183714",
+            border: "1.5px solid #ffe8eb",
+            overflow: "hidden",
+            // no maxWidth or fixed width here!
+          }}
         >
-          <div className="p-4">
-            <div className="text-lg font-bold text-blue-700">{section.label || "Untitled Section"}</div>
-            {section.description && (
-              <div className="text-sm text-gray-500 mb-2">{section.description}</div>
-            )}
-            <div className="mt-2 grid gap-6" style={{
-              gridTemplateColumns: `repeat(${section.columns || 1}, minmax(0, 1fr))`
-            }}>
-              {section.fields && section.fields.map(field => {
-                if (!isFieldVisible(field, section.fields, values)) return null;
-                const apiOptions = apiOptionsMap[field.id] || [];
-                const loadingApiOptions = loadingApiOptionsMap[field.id] || false;
-                return (
-                  <div key={field.id}>
+          {/* Section Title */}
+          {section.label && (
+            <div
+              style={{
+                background: "#ffe8eb",
+                color: "#e31837",
+                fontWeight: 700,
+                fontSize: 18,
+                padding: "10px 24px",
+                borderRadius: "10px 10px 0 0",
+                borderBottom: "2.5px solid #f5a3b5",
+                letterSpacing: 0.6,
+                boxShadow: "0 2px 8px 0 #e3183720",
+                textAlign: "left",
+                minHeight: 48
+              }}
+            >
+              {section.label}
+            </div>
+          )}
+          {/* Description */}
+          {section.description && (
+            <div style={{
+              color: "#546e7a",
+              fontSize: 15,
+              marginBottom: 18,
+              padding: "12px 24px 0 24px"
+            }}>{section.description}</div>
+          )}
+          {/* Fields */}
+          <div
+            style={{
+              display: "grid",
+              gap: 24,
+              gridTemplateColumns: `repeat(${section.columns || 1}, minmax(0, 1fr))`,
+              padding: "24px",
+            }}
+          >
+            {section.fields && section.fields.map(field => {
+              if (!isFieldVisible(field, section.fields, values)) return null;
+              const apiOptions = apiOptionsMap[field.id] || [];
+              const loadingApiOptions = loadingApiOptionsMap[field.id] || false;
+              return (
+                <div key={field.id} style={{
+                  minWidth: 0,
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  flex: 1,
+                }}>
+                  {!["radio", "checkbox", "switch"].includes(field.type) && (
                     <label className="block font-semibold mb-2 text-gray-700 flex items-center gap-1">
                       {field.label}
-                      {field.required ? <span className="text-red-500">*</span> : null}
+                      {field.required ? (<span className="text-red-500">*</span>) : null}
                     </label>
-                    {field.type === "text" && (
-                      <input
-                        type="text"
-                        className={`w-full border rounded px-3 py-2 text-base ${errors[field.id] ? "border-red-500" : ""
-                          }`}
-                        placeholder={field.placeholder || "Text input"}
-                        disabled={field.disabled}
-                        readOnly={field.readOnly}
-                        minLength={field.minLength || undefined}
-                        maxLength={field.maxLength || undefined}
-                        required={field.required}
-                        value={values[field.id] ?? ""}
-                        onChange={e => handleChange(field, e.target.value)}
-                        onBlur={async e => {
-                          const val = e.target.value;
-                          if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
-                            const allFields = flattenFields(fields);
-                            const mergedValues = { ...values, [field.id]: val };
-                            const interpolatedUrl = interpolateUrl(field.apiConfig.url, mergedValues);
-                            const params = interpolateParams(field.apiConfig.params || {}, mergedValues);
+                  )}
 
-                            try {
-                              let response;
-                              if (field.apiConfig.method === 'POST') {
-                                response = await fetch(interpolatedUrl, {
-                                  method: 'POST',
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify(params)
-                                });
-                              } else {
-                                const qStr = new URLSearchParams(params).toString();
-                                response = await fetch(qStr ? `${field.apiConfig.url}?${qStr}` : interpolatedUrl);
-                              }
-                              const json = await response.json();
-                              // Apply mapping:
-                              const updates = {};
-                              for (const [apiKey, targetFieldId] of Object.entries(field.apiConfig.responseMap)) {
-                                if (json[apiKey] !== undefined) {
-                                  let value = json[apiKey];
-                                  // Check if the target field is a date field:
-                                  const targetField = allFields.find(f => f.id === targetFieldId);
-                                  if (targetField?.type === "date") {
-                                    // If it's a datetime string, extract just the date:
-                                    if (typeof value === "string" && value.length >= 10) {
-                                      value = value.substring(0, 10); // Take 'YYYY-MM-DD'
-                                    }
-                                  }
-                                  updates[targetFieldId] = json[apiKey];
-                                }
-                              }
-                              if (Object.keys(updates).length) {
-                                setValues(v => ({ ...v, ...updates }));
-                              }
-                            } catch (err) {
-                              // You can show an error toast or log error here if you want
-                            }
-                          }
-                        }}
-                      />
-                    )}
-
-
-                    {field.type === "date" && (
-                      <input
-                        type="date"
-                        className={`w-full border rounded px-3 py-2 text-base ${errors[field.id] ? "border-red-500" : ""}`}
-                        placeholder={field.placeholder || "Select date"}
-                        disabled={field.disabled}
-                        readOnly={field.readOnly}
-                        value={values[field.id] ?? ""}
-                        onChange={e => handleChange(field, e.target.value)}
-                        onBlur={async e => {
-                          const val = e.target.value;
-                          if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
-                            // interpolate params, fetch, map response...
-                          }
-                        }}
-                      />
-                    )}
-
-
-                    {field.type === "radio" && (
-                      <div className="flex gap-4">
-                        {field.apiConfig
-                          ? loadingApiOptions
-                            ? <span>Loading...</span>
-                            : apiOptions.map(opt => (
-                              <label key={opt.id} className="flex items-center gap-2 text-base">
-                                <input
-                                  type="radio"
-                                  name={field.id}
-                                  disabled={field.disabled}
-                                  checked={
-                                    typeof values[field.id] === "object"
-                                      ? values[field.id]?.id === opt.id
-                                      : values[field.id] === opt.id
-                                  }
-                                  required={field.required}
-                                  onChange={() => handleChange(field, opt)}
-                                />
-                                {opt.label}
-                              </label>
-                            ))
-                          : (field.options || []).map(opt => (
-                            <label key={opt.id} className="flex items-center gap-2 text-base">
-                              <input
-                                type="radio"
-                                name={field.id}
-                                disabled={field.disabled}
-                                checked={
-                                  typeof values[field.id] === "object"
-                                    ? values[field.id]?.id === opt.id
-                                    : values[field.id] === opt.id
-                                }
-                                required={field.required}
-                                onChange={() => handleChange(field, opt)}
-                              />
-                              {opt.label}
-                            </label>
-                          ))
+                  {field.type === "text" && (
+                    <TextField
+                      fullWidth
+                      label={field.label}
+                      variant="outlined"
+                      size="medium"
+                      placeholder={field.placeholder || "Text input"}
+                      disabled={field.disabled}
+                      InputProps={{
+                        readOnly: field.readOnly,
+                        style: {
+                          borderRadius: '12px',
+                          background: field.disabled ? '#f5f6fa' : '#fff',
                         }
-                      </div>
-                    )}
-                    {field.type === "dropdown" && (
-                      <select
-                        disabled={field.disabled}
-                        multiple={field.allowMultiple}
-                        className={`w-full border rounded px-3 py-2 text-base ${errors[field.id] ? "border-red-500" : ""
-                          }`}
-                        value={values[field.id] ? JSON.stringify(values[field.id]) : ""}
-                        required={field.required}
-                        onChange={e => {
-                          let value = e.target.value;
-                          try { value = JSON.parse(value); } catch { }
-                          handleChange(field, value);
-                        }}
-                        readOnly={field.readOnly}
-                      >
-                        <option value="">Select...</option>
-                        {(field.apiConfig ? apiOptions : (field.options || [])).map(opt => (
-                          <option key={opt.id} value={JSON.stringify(opt)}>
-                            {opt.year && opt.value ? `${opt.year} - ${opt.value}` : opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                      }}
+                      inputProps={{
+                        minLength: field.minLength || undefined,
+                        maxLength: field.maxLength || undefined,
+                      }}
+                      value={values[field.id] ?? ''}
+                      onChange={e => handleChange(field, e.target.value)}
+                      onBlur={async e => {
+                        const val = e.target.value;
+                        if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                          const allFields = flattenFields(fields);
+                          const mergedValues = { ...values, [field.id]: val };
+                          const interpolatedUrl = interpolateUrl(field.apiConfig.url, mergedValues);
+                          const params = interpolateParams(field.apiConfig.params || {}, mergedValues);
+                          try {
+                            let response;
+                            if (field.apiConfig.method === 'POST') {
+                              response = await fetch(interpolatedUrl, {
+                                method: 'POST',
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(params)
+                              });
+                            } else {
+                              const qStr = new URLSearchParams(params).toString();
+                              response = await fetch(qStr ? `${field.apiConfig.url}?${qStr}` : interpolatedUrl);
+                            }
+                            const json = await response.json();
+                            const updates = {};
+                            for (const [apiKey, targetFieldId] of Object.entries(field.apiConfig.responseMap)) {
+                              if (json[apiKey] !== undefined) {
+                                let value = json[apiKey];
+                                const targetField = allFields.find(f => f.id === targetFieldId);
+                                if (targetField?.type === "date" && typeof value === "string" && value.length >= 10) {
+                                  value = value.substring(0, 10);
+                                }
+                                updates[targetFieldId] = value;
+                              }
+                            }
+                            if (Object.keys(updates).length) {
+                              setValues(v => ({ ...v, ...updates }));
+                            }
+                          } catch (err) {
+                            // Show error or handle
+                          }
+                        }
+                      }}
+                      required={field.required}
+                      error={!!errors[field.id]}
+                      helperText={errors[field.id] || field.description || ''}
+                      sx={{
+                        mt: 0.5,
+                        mb: 0.5,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '12px',
+                          background: field.disabled ? '#f5f6fa' : '#fff',
+                          '& fieldset': {
+                            borderColor: errors[field.id] ? '#e31837' : '#d9d9d9',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: '#e31837',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#e31837',
+                            boxShadow: '0 0 0 2px #e3183744'
+                          },
+                        },
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: '#e31837',
+                        },
+                      }}
+                    />
+                  )}
 
-                    {field.type === 'checkbox' && (
-                      <div className="flex flex-col gap-2">
-                        {(field.options || []).length === 0 ? (
-                          <span className="text-xs text-gray-400">No options configured.</span>
-                        ) : (
-                          (field.options || []).map(opt => (
-                            <label key={opt.id} className="flex items-center gap-2 text-base">
-                              <input
-                                type="checkbox"
-                                disabled={field.disabled}
+
+                  {field.type === "date" && (
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <DatePicker
+                        label={field.label}
+                        inputFormat="yyyy-MM-dd"
+                        value={values[field.id] || null}
+                        onChange={val => {
+                          let formatted = "";
+                          if (val instanceof Date && !isNaN(val)) {
+                            formatted = val.toISOString().substring(0, 10);
+                          } else if (typeof val === "string") {
+                            formatted = val;
+                          }
+                          handleChange(field, formatted);
+                        }}
+                        disabled={field.disabled}
+                        readOnly={field.readOnly}
+                        renderInput={params => (
+                          <TextField
+                            {...params}
+                            fullWidth
+                            required={field.required}
+                            error={!!errors[field.id]}
+                            helperText={errors[field.id] || field.description || ''}
+                            placeholder={field.placeholder || "Select date"}
+                            sx={{
+                              width: "100%",                // Ensure TextField takes the full width of parent
+                              minWidth: 0,                  // Allow shrinking
+                              '& .MuiOutlinedInput-root': {
+                                borderRadius: '12px',
+                                background: field.disabled ? '#f5f6fa' : '#fff',
+                                width: "100%",              // Force input itself to fill
+                                minWidth: 0,
+                              },
+                              '& .MuiInputAdornment-root': {
+                                marginRight: 0,
+                              },
+                              '& input': {
+                                width: "100%",
+                                minWidth: 0,
+                                boxSizing: "border-box",
+                              },
+                            }}
+                          />
+                        )}
+
+                      />
+                    </LocalizationProvider>
+                  )}
+
+                  {field.type === "radio" && (
+                    <FormControl
+                      fullWidth
+                      required={field.required}
+                      error={!!errors[field.id]}
+                      sx={{
+                        width: "100%",
+                        minWidth: 0,
+                        p: 0,
+                        '& .MuiFormLabel-root': {
+                          fontWeight: 600,
+                          color: "#212121",
+                          fontSize: 16,
+                          mb: 1,
+                        },
+                      }}
+                    >
+                      <FormLabel component="legend">
+                        {field.label}
+                        {field.required && <span style={{ color: "#e31837" }}> *</span>}
+                      </FormLabel>
+                      <RadioGroup
+                        row
+                        value={values[field.id]?.id ?? ""}
+                        onChange={e => {
+                          const selectedId = e.target.value;
+                          const allOptions = field.apiConfig ? apiOptions : (field.options || []);
+                          const selectedOpt = allOptions.find(opt =>
+                            String(opt.id) === String(selectedId)
+                          );
+                          handleChange(field, selectedOpt || null);
+                        }}
+                        sx={{
+                          width: "100%",
+                          flexWrap: "wrap", // <<< this is the trick!
+                          gap: 2,           // gap between buttons (theme spacing)
+                          minWidth: 0,
+                        }}
+                      >
+                        {(field.apiConfig ? apiOptions : (field.options || [])).map(opt => (
+                          <FormControlLabel
+                            key={opt.id}
+                            value={opt.id}
+                            control={<Radio />}
+                            label={opt.label}
+                            disabled={field.disabled}
+                            sx={{
+                              mr: 2,
+                              mb: 0.5,
+                              minWidth: 0,
+                              flexBasis: "auto"
+                            }}
+                          />
+                        ))}
+                      </RadioGroup>
+                      <FormHelperText>
+                        {errors[field.id] || field.description || ""}
+                      </FormHelperText>
+                    </FormControl>
+                  )}
+
+
+
+                  {field.type === "dropdown" && (
+                    <TextField
+                      select
+                      fullWidth
+                      label={field.label}
+                      value={values[field.id]?.id ?? ""} // ← primitive value!
+                      onChange={e => {
+                        const selectedId = e.target.value;
+                        const allOptions = field.apiConfig ? apiOptions : (field.options || []);
+                        const selectedOpt = allOptions.find(opt =>
+                          String(opt.id) === String(selectedId)
+                        );
+                        handleChange(field, selectedOpt || null); // ← store full object!
+                      }}
+                      required={field.required}
+                      disabled={field.disabled}
+                      InputProps={{
+                        readOnly: field.readOnly,
+                        style: {
+                          borderRadius: '12px',
+                          background: field.disabled ? '#f5f6fa' : '#fff',
+                        }
+                      }}
+                      error={!!errors[field.id]}
+                      helperText={errors[field.id] || field.description || ''}
+                      sx={{
+                        width: "100%",
+                        minWidth: 0,
+                        mt: 0.5,
+                        mb: 0.5,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '12px',
+                          background: field.disabled ? '#f5f6fa' : '#fff',
+                          '& fieldset': {
+                            borderColor: errors[field.id] ? '#e31837' : '#d9d9d9',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: '#e31837',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#e31837',
+                            boxShadow: '0 0 0 2px #e3183744'
+                          },
+                        },
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: '#e31837',
+                        },
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>Select...</em>
+                      </MenuItem>
+                      {(field.apiConfig ? apiOptions : (field.options || [])).map(opt => (
+                        <MenuItem key={opt.id} value={opt.id}>
+                          {opt.year && opt.value ? `${opt.year} - ${opt.value}` : opt.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+
+
+                  {field.type === 'checkbox' && (
+                    <FormControl
+                      required={field.required}
+                      error={!!errors[field.id]}
+                      component="fieldset"
+                      sx={{
+                        width: "100%",
+                        minWidth: 0,
+                        p: 0,
+                        mb: 0,
+                        '& .MuiFormLabel-root': {
+                          fontWeight: 600,
+                          color: "#212121",
+                          fontSize: 16,
+                          mb: 1,
+                        },
+                      }}
+                    >
+                      <FormLabel component="legend">
+                        {field.label}
+                        {field.required && <span style={{ color: "#e31837" }}> *</span>}
+                      </FormLabel>
+                      <FormGroup
+                        row
+                        sx={{
+                          flexWrap: "wrap",   // Makes checkboxes wrap horizontally
+                          gap: 2,             // Space between checkboxes
+                          width: "100%",
+                          minWidth: 0,
+                        }}
+                      >
+                        {(field.apiConfig ? apiOptions : (field.options || [])).map(opt => (
+                          <FormControlLabel
+                            key={opt.id}
+                            control={
+                              <Checkbox
                                 checked={Array.isArray(values[field.id]) ? values[field.id].some(o => o.id === opt.id) : false}
                                 onChange={e => {
                                   setValues(v => {
@@ -586,15 +791,50 @@ export default function PreviewForm({ fields }) {
                                     }
                                   });
                                 }}
+                                disabled={field.disabled}
                               />
-                              {opt.label}
-                            </label>
-                          ))
-                        )}
-                      </div>
-                    )}
+                            }
+                            label={opt.label}
+                            sx={{
+                              mr: 2,
+                              mb: 0.5,
+                              minWidth: 0,
+                            }}
+                          />
+                        ))}
+                      </FormGroup>
+                      <FormHelperText>
+                        {errors[field.id] || field.description || ""}
+                      </FormHelperText>
+                    </FormControl>
+                  )}
 
-                    {field.type === 'switch' && (
+
+                  {field.type === 'switch' && (
+                    <FormControl
+                      required={field.required}
+                      error={!!errors[field.id]}
+                      component="fieldset"
+                      sx={{
+                        width: "100%",
+                        minWidth: 0,
+                        p: 0,
+                        mb: 0,
+                      }}
+                    >
+                      <FormLabel
+                        component="legend"
+                        sx={{
+                          fontWeight: 600,
+                          color: "#212121",
+                          fontSize: 16,
+                          mb: 1,
+                          display: "block",
+                        }}
+                      >
+                        {field.label}
+                        {field.required && <span style={{ color: "#e31837" }}> *</span>}
+                      </FormLabel>
                       <FormControlLabel
                         control={
                           <Switch
@@ -602,175 +842,264 @@ export default function PreviewForm({ fields }) {
                             onChange={e => setValues(v => ({ ...v, [field.id]: e.target.checked }))}
                             disabled={field.disabled}
                             inputProps={{ 'aria-label': field.label }}
+                            sx={{
+                              mr: 2,
+                              mt: 0,
+                            }}
                           />
                         }
-                        label={field.label}
-                        sx={{ ml: 0 }} // removes default left margin
-                      />
-                    )}
-
-                    {field.type === 'textarea' && (
-                      <textarea
-                        className="w-full border rounded px-3 py-2 text-base"
-                        rows={field.rows || 4}
-                        placeholder={field.placeholder || 'Enter text'}
-                        disabled={field.disabled}
-                        readOnly={field.readOnly}
-                        minLength={field.minLength || undefined}
-                        maxLength={field.maxLength || undefined}
-                        required={field.required}
-                        value={values[field.id] ?? ''}
-                        onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
-                        onBlur={async e => {
-                          const val = e.target.value;
-                          // API autofill logic (copy same as text input)
-                          if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
-                            // ...API autofill logic here...
-                          }
+                        label={values[field.id] ? (field.onLabel || "On") : (field.offLabel || "Off")}
+                        labelPlacement="end"
+                        sx={{
+                          minWidth: 0,
+                          ml: 0,
+                          fontWeight: 500,
+                          color: "#374151",
                         }}
                       />
-                    )}
+                      <FormHelperText>
+                        {errors[field.id] || field.description || ""}
+                      </FormHelperText>
+                    </FormControl>
+                  )}
 
-                    {field.type === "table" && (
-                      <div className="overflow-x-auto mt-2 mb-3">
-                        <table className="min-w-full border rounded">
-                          <thead>
-                            <tr>
-                              {(field.columns || []).map(col => (
-                                <th key={col.id} className="px-2 py-1 border-b text-left">{col.label}</th>
-                              ))}
-                              <th></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(values[field.id] || []).map((row, ridx) => (
-                              <tr key={ridx}>
-                                {(field.columns || []).map(col => {
-                                  // --- Per-column dependency check ---
-                                  let showCell = true;
-                                  if (col.dependency) {
-                                    const depVal = col.dependency.value;
-                                    const rowDepVal = row[col.dependency.fieldId];
-                                    if (depVal === "*") {
-                                      showCell = rowDepVal !== undefined && rowDepVal !== "" && rowDepVal !== null;
-                                    } else if (rowDepVal && typeof rowDepVal === "object") {
-                                      showCell =
-                                        rowDepVal.id === depVal ||
-                                        rowDepVal.label === depVal ||
-                                        rowDepVal.value === depVal;
-                                    } else {
-                                      showCell = rowDepVal === depVal;
-                                    }
-                                  }
-                                  if (!showCell) return <td key={col.id}></td>;
 
-                                  // --- Dropdown (API or static) ---
-                                  if (col.type === "dropdown") {
-                                    // Always use API options if present, else fallback to static
-                                    const apiOptions = (apiOptionsMap?.[field.id]?.[col.id]?.[ridx]) || [];
-                                    const options = col.apiConfig ? apiOptions : (col.options || []);
-                                    return (
-                                      <td key={col.id}>
-                                        <select
-                                          className="border rounded px-2 py-1"
-                                          value={
-                                            typeof row?.[col.id] === "object"
-                                              ? row?.[col.id]?.id
-                                              : row?.[col.id] || ""
-                                          }
-                                          onChange={e => {
-                                            // Find the option object by ID
-                                            const selectedOpt = options.find(opt =>
-                                              (typeof opt === "object" ? opt.id : opt) === e.target.value
-                                            );
-                                            const updatedRows = (values[field.id] || []).map((r, i) =>
-                                              i === ridx ? { ...r, [col.id]: selectedOpt } : r
-                                            );
-                                            setValues(v => ({ ...v, [field.id]: updatedRows }));
-                                          }}
-                                          required={!!col.required}
-                                        >
-                                          <option value="">Select</option>
-                                          {options.map(opt =>
-                                            typeof opt === "object"
-                                              ? <option key={opt.id} value={opt.id}>{opt.label}</option>
-                                              : <option key={opt} value={opt}>{opt}</option>
-                                          )}
-                                        </select>
-                                      </td>
-                                    );
-                                  }
+                  {field.type === 'textarea' && (
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={field.rows || 4}
+                      label={field.label}
+                      placeholder={field.placeholder || 'Enter text'}
+                      disabled={field.disabled}
+                      InputProps={{
+                        readOnly: field.readOnly,
+                        style: {
+                          borderRadius: '12px',
+                          background: field.disabled ? '#f5f6fa' : '#fff',
+                        }
+                      }}
+                      inputProps={{
+                        minLength: field.minLength || undefined,
+                        maxLength: field.maxLength || undefined,
+                      }}
+                      required={field.required}
+                      value={values[field.id] ?? ''}
+                      onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
+                      onBlur={async e => {
+                        const val = e.target.value;
+                        // API autofill logic (copy same as text input)
+                        if (field.apiConfig && field.apiConfig.responseMap && field.apiConfig.url) {
+                          // ...API autofill logic here if needed...
+                        }
+                      }}
+                      error={!!errors[field.id]}
+                      helperText={errors[field.id] || field.description || ''}
+                      sx={{
+                        mt: 0.5,
+                        mb: 0.5,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '12px',
+                          background: field.disabled ? '#f5f6fa' : '#fff',
+                          '& fieldset': {
+                            borderColor: errors[field.id] ? '#e31837' : '#d9d9d9',
+                          },
+                          '&:hover fieldset': {
+                            borderColor: '#e31837',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#e31837',
+                            boxShadow: '0 0 0 2px #e3183744'
+                          },
+                        },
+                        '& .MuiInputLabel-root.Mui-focused': {
+                          color: '#e31837',
+                        },
+                      }}
+                    />
+                  )}
 
-                                  // --- Text ---
-                                  if (col.type === "text") {
-                                    return (
-                                      <td key={col.id}>
-                                        <input
-                                          className="border rounded px-2 py-1"
-                                          value={row?.[col.id] || ""}
-                                          onChange={e => {
-                                            const updatedRows = (values[field.id] || []).map((r, i) =>
-                                              i === ridx ? { ...r, [col.id]: e.target.value } : r
-                                            );
-                                            setValues(v => ({ ...v, [field.id]: updatedRows }));
-                                          }}
-                                          required={!!col.required}
-                                        />
-                                      </td>
-                                    );
-                                  }
-
-                                  // --- Fallback: empty cell ---
-                                  return <td key={col.id}></td>;
-                                })}
-                                {/* Row delete button */}
-                                <td>
-                                  <button
-                                    className="text-red-600 px-2"
-                                    type="button"
-                                    onClick={() => {
-                                      const updatedRows = (values[field.id] || []).filter((_, i) => i !== ridx);
-                                      setValues(v => ({ ...v, [field.id]: updatedRows }));
-                                    }}
-                                  >×</button>
-                                </td>
-                              </tr>
+                  {field.type === "table" && (
+                    <div style={{ width: "100%", overflowX: "auto", margin: "12px 0" }}>
+                      <table style={{
+                        width: "100%",
+                        borderCollapse: "collapse",
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        background: "#fff",
+                        boxShadow: "0 1px 6px #e3183710",
+                      }}>
+                        <thead>
+                          <tr>
+                            {(field.columns || []).map(col => (
+                              <th
+                                key={col.id}
+                                style={{
+                                  textAlign: "left",
+                                  padding: "10px 16px",
+                                  background: "#f7fafc",
+                                  color: "#e31837",
+                                  fontWeight: 700,
+                                  fontSize: 15,
+                                  borderBottom: "2px solid #f5a3b5",
+                                }}
+                              >
+                                {col.label}
+                                {col.required && <span style={{ color: "#e31837" }}>*</span>}
+                              </th>
                             ))}
-                            {/* Add row button */}
-                            <tr>
-                              <td colSpan={(field.columns?.length || 0) + 1}>
-                                <button
-                                  className="bg-green-500 text-white px-3 py-1 rounded"
-                                  type="button"
+                            <th style={{ width: 42, background: "#f7fafc" }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(values[field.id] || []).map((row, ridx) => (
+                            <tr key={ridx}>
+                              {(field.columns || []).map(col => {
+                                let showCell = true;
+                                if (col.dependency) {
+                                  const depVal = col.dependency.value;
+                                  const rowDepVal = row[col.dependency.fieldId];
+                                  if (depVal === "*") {
+                                    showCell = rowDepVal !== undefined && rowDepVal !== "" && rowDepVal !== null;
+                                  } else if (rowDepVal && typeof rowDepVal === "object") {
+                                    showCell =
+                                      rowDepVal.id === depVal ||
+                                      rowDepVal.label === depVal ||
+                                      rowDepVal.value === depVal;
+                                  } else {
+                                    showCell = rowDepVal === depVal;
+                                  }
+                                }
+                                if (!showCell) return <td key={col.id}></td>;
+
+                                // Dropdown
+                                if (col.type === "dropdown") {
+                                  const options = col.apiConfig
+                                    ? (apiOptionsMap?.[field.id]?.[col.id]?.[ridx] || [])
+                                    : (col.options || []);
+                                  return (
+                                    <td key={col.id} style={{ padding: "8px 16px", minWidth: 160 }}>
+                                      <TextField
+                                        select
+                                        fullWidth
+                                        size="small"
+                                        value={row?.[col.id]?.id ?? ""}
+                                        onChange={e => {
+                                          const selectedId = e.target.value;
+                                          const selectedOpt = options.find(opt =>
+                                            String(opt.id) === String(selectedId)
+                                          );
+                                          const updatedRows = (values[field.id] || []).map((r, i) =>
+                                            i === ridx ? { ...r, [col.id]: selectedOpt } : r
+                                          );
+                                          setValues(v => ({ ...v, [field.id]: updatedRows }));
+                                        }}
+                                        sx={{
+                                          '& .MuiOutlinedInput-root': {
+                                            borderRadius: '8px',
+                                            background: '#fff',
+                                            fontSize: 14,
+                                          },
+                                        }}
+                                      >
+                                        <MenuItem value="">
+                                          <em>Select...</em>
+                                        </MenuItem>
+                                        {options.map(opt =>
+                                          <MenuItem key={opt.id} value={opt.id}>{opt.label}</MenuItem>
+                                        )}
+                                      </TextField>
+                                    </td>
+                                  );
+                                }
+
+                                // Text
+                                if (col.type === "text") {
+                                  return (
+                                    <td key={col.id} style={{ padding: "8px 16px" }}>
+                                      <TextField
+                                        fullWidth
+                                        size="small"
+                                        value={row?.[col.id] ?? ""}
+                                        onChange={e => {
+                                          const updatedRows = (values[field.id] || []).map((r, i) =>
+                                            i === ridx ? { ...r, [col.id]: e.target.value } : r
+                                          );
+                                          setValues(v => ({ ...v, [field.id]: updatedRows }));
+                                        }}
+                                        sx={{
+                                          '& .MuiOutlinedInput-root': {
+                                            borderRadius: '8px',
+                                            background: '#fff',
+                                            fontSize: 14,
+                                          },
+                                        }}
+                                      />
+                                    </td>
+                                  );
+                                }
+
+                                // (Optional) More types as needed...
+                                return <td key={col.id}></td>;
+                              })}
+
+                              {/* Delete row */}
+                              <td style={{ padding: "8px 8px", textAlign: "center" }}>
+                                <IconButton
+                                  size="small"
+                                  color="error"
                                   onClick={() => {
-                                    setValues(v => ({
-                                      ...v,
-                                      [field.id]: [...(v[field.id] || []), {}]
-                                    }));
+                                    const updatedRows = (values[field.id] || []).filter((_, i) => i !== ridx);
+                                    setValues(v => ({ ...v, [field.id]: updatedRows }));
                                   }}
-                                >+ Add Row</button>
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
                               </td>
                             </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                          ))}
+
+                          {/* Add row button */}
+                          <tr>
+                            <td colSpan={(field.columns?.length || 0) + 1}>
+                              <IconButton
+                                color="primary"
+                                sx={{
+                                  background: '#e31837',
+                                  color: '#fff',
+                                  borderRadius: 2,
+                                  px: 2, py: 1,
+                                  '&:hover': { background: '#c31530' }
+                                }}
+                                onClick={() => {
+                                  setValues(v => ({
+                                    ...v,
+                                    [field.id]: [...(v[field.id] || []), {}]
+                                  }));
+                                }}
+                              >
+                                <AddIcon fontSize="small" />&nbsp;Add Row
+                              </IconButton>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
 
 
-
-
-                    {field.description && (
-                      <div className="mt-2 text-xs text-gray-500">{field.description}</div>
-                    )}
-                    {errors[field.id] && (
-                      <div className="text-red-500 text-xs mt-1">{errors[field.id]}</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  {field.description && (
+                    <div className="mt-2 text-xs text-gray-500">{field.description}</div>
+                  )}
+                  {errors[field.id] && (
+                    <div className="text-red-500 text-xs mt-1">{errors[field.id]}</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
+
       );
     });
   }
@@ -838,7 +1167,13 @@ export default function PreviewForm({ fields }) {
       </button>
     </div>
   ) : (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto flex flex-col gap-6">
+    <form onSubmit={handleSubmit} style={{
+      width: "100%",
+      maxWidth: "100%",
+      display: "flex",
+      flexDirection: "column",
+      gap: 32
+    }}>
       {renderSections(fields)}
       <button
         type="submit"
