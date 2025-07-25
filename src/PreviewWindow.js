@@ -4,9 +4,24 @@ import PreviewForm from "./components/PreviewForm"; // adjust path if needed
 export default function PreviewWindow() {
   const [fields, setFields] = useState(null);
 
+  // Initial load from localStorage
   useEffect(() => {
     const schema = localStorage.getItem("formPreviewSchema");
     if (schema) setFields(JSON.parse(schema));
+  }, []);
+
+  // Listen for changes to formPreviewSchema in localStorage (live auto-update)
+  useEffect(() => {
+    function handleStorage(event) {
+      if (event.key === "formPreviewSchema") {
+        // Make sure the event is not null and value is not null
+        if (event.newValue) {
+          setFields(JSON.parse(event.newValue));
+        }
+      }
+    }
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   if (!fields) return (
@@ -30,7 +45,7 @@ export default function PreviewWindow() {
       <div
         style={{
           width: "100%",
-          maxWidth: 1080, // ← increase this for even more width (e.g., 1200)
+          maxWidth: 1080,
           background: "#fff",
           borderRadius: 20,
           boxShadow: "0 6px 32px -4px #c5c6cc30",
@@ -38,8 +53,6 @@ export default function PreviewWindow() {
           marginBottom: 64,
         }}
       >
-        {/* Optional: App branding or header */}
-        {/* <div style={{fontWeight: 900, fontSize: 24, marginBottom: 16, letterSpacing: 1}}>Form Preview</div> */}
         <PreviewForm fields={fields} />
       </div>
     </div>

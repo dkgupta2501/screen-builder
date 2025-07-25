@@ -514,6 +514,20 @@ export default function PropertiesPanel({
   const [paramText, setParamText] = useState("{}");
   const [optionInput, setOptionInput] = useState("");
 
+
+  useEffect(() => {
+    if (!apiDraft) return;
+    // Only auto-sync for widgets using API config
+    if (
+      (["dropdown", "radio", "checkbox"].includes(field.type) && optionSource === "api") ||
+      (["text", "date"].includes(field.type))
+    ) {
+      updateField({ apiConfig: apiDraft });
+    }
+    // eslint-disable-next-line
+  }, [apiDraft]);
+  
+
   // Update API draft and related state when selected field changes
   useEffect(() => {
     if (field) {

@@ -20,7 +20,6 @@ export default function App() {
 
   // If published, disable editing
   const isLocked = !!publishedFields;
-
   // --- HANDLERS ---
 
   function handleSave() {
