@@ -74,10 +74,10 @@ function deleteFieldById(fields, id) {
 // --- Card UI helper ---
 function Card({ icon, title, children, tooltip, className }) {
   return (
-    <section className={`bg-white rounded-2xl shadow p-4 mb-5 border border-gray-100 ${className || ''}`}>
+    <section className={`bg-white p-3 mb-4 border-b border-gray-200 ${className || ''}`}>
       <header className="flex items-center mb-2">
-        <span className="text-lg text-blue-500 mr-2">{icon}</span>
-        <span className="font-semibold text-gray-700 text-base">{title}</span>
+        <span className="text-base text-[#e31837] mr-2">{icon}</span>
+        <span className="font-semibold text-gray-700 text-sm">{title}</span>
         {tooltip && (
           <span className="ml-2 text-xs text-gray-400" title={tooltip}>ⓘ</span>
         )}
@@ -97,7 +97,7 @@ function EnhancedColumnsCard({ field, updateField, uuidv4 }) {
       <div className="mb-4">
         {/* Add Column Icon Button */}
         <button
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center mb-3 shadow"
+          className="bg-[#e31837] hover:bg-[#c01530] text-white rounded-full w-10 h-10 flex items-center justify-center mb-3 shadow"
           title="Add Column"
           type="button"
           onClick={() =>
@@ -124,19 +124,19 @@ function EnhancedColumnsCard({ field, updateField, uuidv4 }) {
           {(field.columns || []).map((col, idx) => (
             <div
               key={col.id}
-              className="rounded-2xl border bg-white shadow-sm transition hover:shadow-md mb-1"
+              className="rounded border bg-white shadow-sm transition hover:shadow-md mb-1"
             >
               <details open className="group">
-                <summary className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-t-2xl font-semibold hover:bg-blue-100 cursor-pointer select-none">
-                  <FaFont className="text-blue-400" />
+                <summary className="flex items-center gap-2 px-4 py-2 bg-[#ffeeee] rounded-t font-semibold hover:bg-[#ffe0e0] cursor-pointer select-none">
+                  <FaFont className="text-[#e31837]" />
                   <span className="truncate max-w-[100px]">{col.label || `Column ${idx + 1}`}</span>
-                  <span className="ml-2 px-2 py-0.5 bg-gray-200 rounded text-xs uppercase tracking-wide">
+                  <span className="ml-2 px-2 py-0.5 bg-white border border-[#ffdddd] rounded text-xs uppercase tracking-wide text-[#e31837]">
                     {col.type}
                   </span>
                   {/* Copy Column ID Button */}
                   <button
                     type="button"
-                    className="ml-2 text-blue-500 hover:bg-blue-200 hover:text-blue-700 rounded-full w-8 h-8 flex items-center justify-center transition"
+                    className="ml-2 text-[#e31837] hover:bg-gray-200 hover:text-[#c01530] rounded-full w-8 h-8 flex items-center justify-center transition"
                     title="Copy Column ID"
                     onClick={e => {
                       e.preventDefault();
@@ -174,7 +174,7 @@ function EnhancedColumnsCard({ field, updateField, uuidv4 }) {
                         Label
                       </label>
                       <input
-                        className="border rounded-lg px-3 py-1 w-full text-base focus:ring-2 focus:ring-blue-200"
+                        className="border rounded-lg px-3 py-1 w-full text-base focus:ring-2 focus:ring-[#e31837]/20"
                         style={{ maxWidth: 280 }}
                         value={col.label}
                         onChange={e => updateField({
@@ -256,7 +256,7 @@ function EnhancedColumnsCard({ field, updateField, uuidv4 }) {
                               }}
                             />
                             <button
-                              className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                              className="bg-[#e31837] hover:bg-[#c01530] text-white rounded-full w-8 h-8 flex items-center justify-center"
                               type="button"
                               title="Add Option"
                               onClick={() => {
@@ -413,7 +413,7 @@ function EnhancedColumnsCard({ field, updateField, uuidv4 }) {
                           </div>
                           <div className="col-span-2">
                             <button
-                              className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2 mt-2 self-start"
+                              className="bg-[#e31837] hover:bg-[#c01530] text-white rounded px-4 py-2 mt-2 self-start"
                               type="button"
                               onClick={async () => {
                                 try {
@@ -500,41 +500,65 @@ export default function PropertiesPanel({
   selectedFieldId,
   setSelectedFieldId
 }) {
-  const field = findFieldById(fields, selectedFieldId);
-
+  const [copiedFieldId, setCopiedFieldId] = useState(null);
+ 
+  // Get the selected field
+  const field = selectedFieldId ? findFieldById(fields, selectedFieldId) : null;
+ 
   // --- Local state for API config, options, etc ---
-  const [apiDraft, setApiDraft] = useState(field?.apiConfig || null);
-  const [optionSource, setOptionSource] = useState(field?.apiConfig ? "api" : "static");
+  const [apiDraft, setApiDraft] = useState(null);
+  const [optionSource, setOptionSource] = useState("static");
   const [apiError, setApiError] = useState(null);
   const [apiPreview, setApiPreview] = useState([]);
   const [apiLoading, setApiLoading] = useState(false);
-  const [paramText, setParamText] = useState(
-    field?.apiConfig?.params
-      ? JSON.stringify(field.apiConfig.params, null, 2)
-      : "{}"
-  );
+  const [paramText, setParamText] = useState("{}");
   const [optionInput, setOptionInput] = useState("");
 
+  // Update API draft and related state when selected field changes
   useEffect(() => {
-    setApiDraft(field?.apiConfig || {
-      url: "",
-      method: "GET",
-      params: {},
-      mapOptions: { idKey: "", labelKey: "" },
-      responsePath: "",
-      dependsOn: [],
-      responseMap: {}
-    });
-    setApiPreview([]);
-    setApiError(null);
-    setApiLoading(false);
-    setParamText(
-      field?.apiConfig?.params
-        ? JSON.stringify(field.apiConfig.params, null, 2)
-        : "{}"
-    );
-    setOptionSource(field?.apiConfig ? "api" : "static");
+    if (field) {
+      setApiDraft(field.apiConfig || {
+        url: "",
+        method: "GET",
+        params: {},
+        mapOptions: { idKey: "", labelKey: "" },
+        responsePath: "",
+        dependsOn: [],
+        responseMap: {}
+      });
+      setApiPreview([]);
+      setApiError(null);
+      setApiLoading(false);
+      setParamText(
+        field.apiConfig?.params
+          ? JSON.stringify(field.apiConfig.params, null, 2)
+          : "{}"
+      );
+      setOptionSource(field.apiConfig ? "api" : "static");
+    }
   }, [field?.id]);
+
+  if (!selectedFieldId) {
+    return (
+      <div className="flex flex-col p-4 bg-gray-50 rounded border border-gray-200">
+        <h3 className="font-bold mb-2">Note!</h3>
+        <p className="text-sm text-gray-600">
+          You need to select a container/control to edit properties.
+        </p>
+      </div>
+    );
+  }
+
+  if (!field) {
+    return (
+      <div>
+        <h2 className="text-xl font-semibold text-gray-700 mb-4">Properties & Dependencies</h2>
+        <p className="text-sm text-gray-500 italic">Select a field to configure...</p>
+      </div>
+    );
+  }
+
+  // useEffect hook was moved to the top of the component
 
   if (!field) {
     return (
@@ -684,7 +708,7 @@ export default function PropertiesPanel({
   };
 
 
-  // --- Cycle-safe dependency logic for "Visibility Dependency" only ---
+  // --- Dependency logic for "Visibility Dependency" ---
   const flatFields = flattenFieldsWithDeps(fields);
   const dependsOnFieldOptions = flatFields
     .filter(f =>
@@ -912,7 +936,7 @@ export default function PropertiesPanel({
                   onKeyDown={e => e.key === "Enter" && addOption()}
                 />
                 <button
-                  className="bg-blue-500 text-white px-3 py-1 rounded-r"
+                  className="bg-[#e31837] text-white px-3 py-1 rounded-r"
                   onClick={addOption}
                   type="button"
                 >
@@ -1037,7 +1061,7 @@ export default function PropertiesPanel({
                 </div>
               </div>
               <button
-                className="bg-blue-600 text-white px-4 py-1 rounded font-semibold hover:bg-blue-700"
+                className="bg-[#e31837] text-white px-4 py-1 rounded font-semibold hover:bg-[#c01530]"
                 onClick={handleApiSave}
                 type="button"
                 disabled={apiLoading || !!apiError}
@@ -1119,13 +1143,13 @@ export default function PropertiesPanel({
                 return (
                   <div
                     key={apiKey + idx}
-                    className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 transition group"
+                    className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 transition group"
                   >
-                    <span className="font-mono text-xs text-blue-700 min-w-[80px]">
+                    <span className="font-mono text-xs text-[#e31837] min-w-[80px]">
                       {apiKey}
                     </span>
                     <span className="mx-1 text-gray-400">→</span>
-                    <span className="flex-1 text-sm font-medium text-blue-900 truncate">
+                    <span className="flex-1 text-sm font-medium text-gray-700 truncate">
                       {fieldInfo?.label || "(field missing)"}{" "}
                       <span className="text-xs text-gray-400">[{fieldId.slice(0, 6)}]</span>
                     </span>
@@ -1169,7 +1193,7 @@ export default function PropertiesPanel({
                 </select>
                 <button
                   type="button"
-                  className={`bg-blue-600 text-white px-4 py-1 rounded font-semibold shadow hover:bg-blue-700 transition ${!(apiDraft?._newApiKey && apiDraft?._newFieldId)
+                  className={`bg-[#e31837] text-white px-4 py-1 rounded font-semibold shadow hover:bg-[#c01530] transition ${!(apiDraft?._newApiKey && apiDraft?._newFieldId)
                     ? "opacity-60 cursor-not-allowed"
                     : ""
                     }`}
@@ -1199,7 +1223,7 @@ export default function PropertiesPanel({
           </div>
 
           <button
-            className="bg-blue-600 text-white px-4 py-1 rounded font-semibold hover:bg-blue-700"
+            className="bg-[#e31837] text-white px-4 py-1 rounded font-semibold hover:bg-[#c01530]"
             onClick={handleApiSave}
             type="button"
             disabled={apiLoading || !!apiError}
@@ -1458,9 +1482,7 @@ export default function PropertiesPanel({
               "no dependency"
             )}
           </div>
-          <div className="mt-1 text-xs text-blue-400">
-            <b>Cycle-safe:</b> Can't select fields that would create a direct or indirect circular dependency.
-          </div>
+
         </div>
       </Card>
 
@@ -1471,8 +1493,8 @@ export default function PropertiesPanel({
         className="bg-red-50 border-red-200"
       >
         <button
-          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full font-bold"
-          onClick={deleteField} ß
+          className="bg-[#e31837] text-white px-4 py-2 rounded hover:bg-[#c31530] w-full font-bold"
+          onClick={deleteField}
           type="button"
         >
           Delete Field

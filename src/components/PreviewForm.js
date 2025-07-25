@@ -575,7 +575,7 @@ export default function PreviewForm({ fields }) {
                       <DatePicker
                         label={field.label}
                         inputFormat="yyyy-MM-dd"
-                        value={values[field.id] || null}
+                        value={values[field.id] ? new Date(values[field.id]) : null}
                         onChange={val => {
                           let formatted = "";
                           if (val instanceof Date && !isNaN(val)) {
@@ -596,12 +596,12 @@ export default function PreviewForm({ fields }) {
                             helperText={errors[field.id] || field.description || ''}
                             placeholder={field.placeholder || "Select date"}
                             sx={{
-                              width: "100%",                // Ensure TextField takes the full width of parent
-                              minWidth: 0,                  // Allow shrinking
+                              width: "100%",
+                              minWidth: 0,
                               '& .MuiOutlinedInput-root': {
                                 borderRadius: '12px',
                                 background: field.disabled ? '#f5f6fa' : '#fff',
-                                width: "100%",              // Force input itself to fill
+                                width: "100%",
                                 minWidth: 0,
                               },
                               '& .MuiInputAdornment-root': {
@@ -615,8 +615,8 @@ export default function PreviewForm({ fields }) {
                             }}
                           />
                         )}
-
                       />
+
                     </LocalizationProvider>
                   )}
 
